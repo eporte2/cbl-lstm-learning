@@ -1,0 +1,126 @@
+---
+title: "crossvalidation_analysis"
+output: html_document
+---
+
+```{r setup}
+knitr::opts_chunk$set(echo = TRUE)
+library("tools")
+#library("plyr")
+library("ggplot2")
+library("tidyverse")
+
+theme_set(theme_classic())
+```
+
+```{r load_data}
+my_get_transcript_results <- function(file){
+  df = read.csv(file)
+  #Extract child name from file name and add variable.
+  file_name = strsplit(file_path_sans_ext(file), "/")[[1]]
+  file_name = file_name[(length(file_name))]
+  child_name = strsplit(file_name,".prod_result_crossvalidation", fixed=TRUE)[[1]]
+
+  df = df %>%
+    mutate(child_name = child_name)
+  return(df)
+}
+
+my_get_prod_results <- function(result_dir){
+  files = list.files(path=result_dir, pattern="*.csv", full.names=TRUE, recursive=FALSE)
+  df.prod_results = files %>% map(my_get_transcript_results) %>% reduce(rbind)
+  return(df.prod_results)
+}
+
+result_dir = "../../data/results/lstm2-crossvalidation"
+df.crossvalidation = my_get_prod_results(result_dir)
+```
+
+```{r overall}
+
+df.crossvalidation = df.crossvalidation %>% mutate(model = paste(hidden_dim,output_size,L1,L2))
+
+ggplot(df.crossvalidation, aes(x=utterance_length, y=production_score, color = model)) +
+  geom_line()+
+  geom_point()+
+  facet_grid(. ~ decoder)+
+  ylab("Production score") +
+  xlab("Utterance length (nb words)")+
+  scale_y_continuous(limits = c(0.0, 1.0))+
+  scale_x_continuous(breaks = c(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16))+
+  ggtitle("CBL: average incremental production score for each child by utterance length")
+```
+
+```{r hidden_dim}
+ggplot(df.crossvalidation, aes(x=utterance_length, y=production_score, group=factor(hidden_dim), color = factor(hidden_dim))) +
+  stat_summary(fun.y = "mean",
+               geom = "point") +
+  stat_summary(fun.y = "mean",
+               geom = "line") +
+  facet_grid(. ~ decoder)+
+  ylab("Production score") +
+  xlab("Utterance length (nb words)")+
+  scale_y_continuous(limits = c(0.0, 1.0))+
+  scale_x_continuous(breaks = c(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16))+
+  ggtitle("Mean accuracy by model hidden_dim")
+```
+
+```{r output_size}
+ggplot(df.crossvalidation, aes(x=utterance_length, y=production_score, group=factor(output_size), color = factor(output_size))) +
+  stat_summary(fun.y = "mean",
+               geom = "point") +
+  stat_summary(fun.y = "mean",
+               geom = "line") +
+  facet_grid(. ~ decoder)+
+  ylab("Production score") +
+  xlab("Utterance length (nb words)")+
+  scale_y_continuous(limits = c(0.0, 1.0))+
+  scale_x_continuous(breaks = c(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16))+
+  ggtitle("Mean accuracy by model embedding size")
+```
+
+```{r regularization}
+df.crossvalidation = df.crossvalidation %>% mutate(L1L2 = paste(L1,L2))
+
+ggplot(df.crossvalidation, aes(x=utterance_length, y=production_score, group=L1L2, color = L1L2)) +
+  stat_summary(fun.y = "mean",
+               geom = "point") +
+  stat_summary(fun.y = "mean",
+               geom = "line") +
+  facet_grid(. ~ decoder)+
+  ylab("Production score") +
+  xlab("Utterance length (nb words)")+
+  scale_y_continuous(limits = c(0.0, 1.0))+
+  scale_x_continuous(breaks = c(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16))+
+  ggtitle("Mean accuracy by model regularization")
+```
+
+```{r top}
+df.crossval_filter = df.crossvalidation %>% 
+  filter(hidden_dim==50 & output_size == 100 & L1 == 0 & L2 == 0 & decoder == "beam") %>% 
+  mutate(model = paste(hidden_dim,output_size,L1,L2))
+
+ggplot(df.crossval_filter, aes(x=utterance_length, y=production_score, color = model)) +
+  geom_line()+
+  geom_point()+
+  facet_wrap(vars(decoder, child_name))+
+  ylab("Production score") +
+  xlab("Utterance length (nb words)")+
+  scale_y_continuous(limits = c(0.0, 1.0))+
+  scale_x_continuous(breaks = c(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16))+
+  ggtitle("CBL: average incremental production score for each child by utterance length")
+
+
+df.crossval_overallscore = df.crossvalidation %>% 
+  mutate(model = paste(hidden_dim,output_size,L1,L2)) %>% 
+  group_by(model, child_name, decoder) %>%
+  mutate(total_nb_utterances = sum(nb_utterances)) %>% 
+  mutate(total_nb_produced = sum(produced)) %>% 
+  mutate(overall_prod_score = total_nb_produced/total_nb_utterances) %>% 
+  select(model, decoder, child_name, overall_prod_score) %>%
+  ungroup() %>%
+  unique()
+
+df.crossval_overallscore  %>% arrange(child_name, decoder, desc(overall_prod_score))
+
+```

@@ -1,0 +1,647 @@
+---
+title: "MC_model_result_eval"
+output: html_document
+---
+
+
+```{r setup}
+knitr::opts_chunk$set(echo = TRUE)
+library("tools")
+#library("plyr")
+library("ggplot2")
+library("tidyverse")
+
+theme_set(theme_classic())
+```
+
+Read in all result files for each child transcript and combine them into a single data.frame.
+```{r get_results}
+
+my_get_transcript_results <- function(file){
+  df = read.csv(file)
+  #Extract child name from file name and add variable.
+  file_name = strsplit(file_path_sans_ext(file), "/")[[1]]
+  file_name = file_name[(length(file_name))]
+  child_name = strsplit(file_name,".prod_result", fixed=TRUE)[[1]]
+
+  df = df %>%
+    mutate(child_name = child_name)
+  return(df)
+}
+
+my_get_prod_results <- function(result_dir){
+  files = list.files(path=result_dir, pattern="*.csv", full.names=TRUE, recursive=FALSE)
+  df.prod_results = files %>% map(my_get_transcript_results) %>% reduce(rbind)
+  return(df.prod_results)
+}
+
+
+```
+
+```{r cbl_files}
+result_dir = "../../data/results/cbl-baseline/prod_results/run1_incremental"
+df.cbl_incr = my_get_prod_results(result_dir)
+```
+
+```{r cbl_files2}
+result_dir = "../../data/results/cbl-baseline/prod_results/run2_nonincremental"
+df.cbl_nonincr = my_get_prod_results(result_dir)
+```
+
+```{r cbl_files3}
+result_dir = "../../data/results/cbl-baseline/prod_results/run3_0.4test"
+df.cbl_0.4test = my_get_prod_results(result_dir)
+```
+
+```{r lstm_files}
+result_dir = "../../data/results/lstm-baseline/prod_results/third_run_0.4test"
+df.lstm_prod_results = my_get_prod_results(result_dir)
+
+```
+
+CBL only : For each child calculate the average performance over all iterations of the model for each sentence length. Save the average performance score by sentence length for each child.
+```{r by_child}
+
+my_get_prod_results_bychild <- function(df.cbl){
+  df.cbl_prod_results_bychild = df.cbl %>%
+    select(child_name, utterance_length, nb_utterances, produced, production_score) %>% 
+    group_by(child_name, utterance_length) %>%
+    mutate(nb_utterances = mean(nb_utterances)) %>% 
+    mutate(production_score = mean(production_score)) %>%
+    mutate(produced = mean(production_score*nb_utterances))%>%
+    select(child_name, utterance_length, nb_utterances, produced, production_score) %>%
+    ungroup() %>%
+    unique()
+  
+  return(df.cbl_prod_results_bychild)
+}
+
+```
+
+```{r cbl_child}
+df.cbl_incr_bychild = my_get_prod_results_bychild(df.cbl_incr)
+df.cbl_nonincr_bychild = my_get_prod_results_bychild(df.cbl_nonincr)
+df.cbl_0.4test_bychild = my_get_prod_results_bychild(df.cbl_0.4test)
+```
+
+```{r lstm_child}
+df.lstm_bychild = df.lstm_prod_results %>% 
+  ungroup() %>% 
+  select(child_name, utterance_length, nb_utterances, produced, production_score)
+```
+Calculate the models overall performance by sentence length. Add the total nb of sentences of each different sentence length together for all child transcripts. Add the average nb of (correctly) produced sentences by the model for all child transcripts. Calculate the overall production scores by sentence length.
+```{r sum_by_lang}
+my_get_prod_results_bylang <- function(df.prod_results_bychild ){
+  df.prod_results_bylang = df.prod_results_bychild %>%
+    group_by(utterance_length) %>%
+    mutate(total_nb_utterances = sum(nb_utterances)) %>%
+    mutate(total_avg_produced = sum(produced)) %>%
+    select(utterance_length, total_nb_utterances, total_avg_produced) %>%
+    ungroup() %>%
+    unique() %>%
+    mutate(production_score = total_avg_produced/total_nb_utterances)
+  
+  return(df.prod_results_bylang)
+}
+```
+
+```{r avg_by_lang}
+my_get_avg_prod_results_bylang <- function(df.prod_results_bychild ){
+  df.avg_prod_results_bylang = df.prod_results_bychild %>%
+    group_by(utterance_length) %>%
+    mutate(avg_nb_utterances = mean(nb_utterances)) %>%
+    mutate(avg_production_score = mean(production_score)) %>%
+    select(utterance_length, avg_nb_utterances, avg_production_score) %>%
+    ungroup() %>%
+    unique()
+  
+  return(df.avg_prod_results_bylang)
+}
+
+my_get_overall_score_bylang <- function(df.prod_results_bylang){
+  overall_score = sum(df.prod_results_bylang$avg_production_score*df.prod_results_bylang$avg_nb_utterances)/sum(df.prod_results_bylang$avg_nb_utterances)
+  return(overall_score)
+}
+
+
+```
+
+```{r cbl_bylang}
+df.cbl_incr_bylang = my_get_avg_prod_results_bylang(df.cbl_incr_bychild)
+
+cbl_incr_overall_eng = my_get_overall_score_bylang(df.cbl_incr_bylang)
+
+df.cbl_nonincr_bylang = my_get_avg_prod_results_bylang(df.cbl_nonincr_bychild)
+
+cbl_incr_overall_eng = my_get_overall_score_bylang(df.cbl_nonincr_bylang)
+
+df.cbl_0.4test_bylang = my_get_avg_prod_results_bylang(df.cbl_0.4test_bychild)
+
+cbl_0.4test_overall_eng = my_get_overall_score_bylang(df.cbl_0.4test_bylang)
+```
+
+```{r lstm_bylang}
+df.lstm_prod_results_bylang = my_get_avg_prod_results_bylang(df.lstm_bychild)
+
+lstm_overall_eng = my_get_overall_score_bylang(df.lstm_prod_results_bylang)
+```
+
+
+Plot the average production score by sentence length for each child transcript.
+```{r cbl_plot1_incr}
+#Only take sentences with 16 words or less
+df.plot1 = df.cbl_incr_bychild %>%
+  filter(utterance_length <= 16)
+
+
+ggplot(df.plot1, aes(x=utterance_length, y=production_score, color = child_name)) +
+  geom_point()+
+  ylab("Production score") +
+  xlab("Utterance length (nb words)")+
+  scale_y_continuous(limits = c(0.0, 1.0))+
+  scale_x_continuous(breaks = c(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16))+
+  ggtitle("CBL: average incremental production score for each child by utterance length")
+```
+```{r cbl_plot1_nonincr}
+#Only take sentences with 16 words or less
+df.plot1 = df.cbl_nonincr_bychild %>%
+  filter(utterance_length <= 16)
+
+
+ggplot(df.plot1, aes(x=utterance_length, y=production_score, color = child_name)) +
+  geom_point()+
+  ylab("Production score") +
+  xlab("Utterance length (nb words)")+
+  scale_y_continuous(limits = c(0.0, 1.0))+
+  scale_x_continuous(breaks = c(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16))+
+  ggtitle("CBL: average non-incremental production score for each child by utterance length")
+```
+
+```{r cbl_plot1_04test}
+#Only take sentences with 16 words or less
+df.plot1 = df.cbl_0.4test_bychild %>%
+  filter(utterance_length <= 16)
+
+
+ggplot(df.plot1, aes(x=utterance_length, y=production_score, color = child_name)) +
+  geom_point()+
+  ylab("Production score") +
+  xlab("Utterance length (nb words)")+
+  scale_y_continuous(limits = c(0.0, 1.0))+
+  scale_x_continuous(breaks = c(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16))+
+  ggtitle("CBL: average incremental production score for each child by utterance length")
+```
+
+```{r lstm_plot1}
+#Only take sentences with 16 words or less
+df.plot1 = df.lstm_bychild%>%
+  filter(utterance_length <= 16)
+
+
+ggplot(df.plot1, aes(x=utterance_length, y=production_score, color = child_name)) +
+  geom_point()+
+  ylab("Production score") +
+  xlab("Utterance length (nb words)")+
+  scale_y_continuous(limits = c(0.0, 1.0))+
+  scale_x_continuous(breaks = c(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16))+
+  ggtitle("LSTM baseline: production score for each child by utterance length")
+```
+
+Plot the overall production score by sentence length. The numbers are the different n for each sentence length.
+```{r plot2_incr}
+#Only take sentences with 16 words or less
+df.cbl_plot2 = df.cbl_incr_bylang %>%
+  filter(utterance_length <= 16) %>% 
+  select(utterance_length,avg_production_score,avg_nb_utterances) %>% 
+  mutate(model = "cbl-incremental")
+
+df.lstm_plot2 = df.lstm_prod_results_bylang %>%
+  filter(utterance_length <= 16) %>% 
+  select(utterance_length,avg_production_score,avg_nb_utterances) %>% 
+  mutate(model = "lstm")
+
+df.chance_plot2 = df.lstm_plot2 %>% 
+  select(utterance_length) %>% 
+  mutate(production_score = 1/factorial(utterance_length), 
+         avg_nb_utterances=1, 
+         model="chance")
+
+df.plot2 = rbind(df.cbl_plot2,df.lstm_plot2)
+
+#overall_score_16 = sum(df.plot2$total_avg_produced)/sum(df.plot2$total_nb_utterances)
+
+ggplot(NULL,aes(x=utterance_length)) +
+  geom_point(data= df.plot2, aes(y=avg_production_score, color = model, size = avg_nb_utterances), shape=19) +
+  geom_line(data=df.chance_plot2, aes(y=production_score), linetype="dashed")+
+#  geom_text(aes(label=total_nb_utterances),hjust=0, vjust=0) +
+  ylab("Production score") +
+  xlab("Utterance length (nb words)") +
+  scale_y_continuous(limits = c(0.0, 1.0))+
+  scale_x_continuous(breaks = c(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16))+
+  ggtitle("Overall production score by utterance length with counts")
+```
+
+
+```{r plot2_nonincr}
+#Only take sentences with 16 words or less
+df.cbl_plot2 = df.cbl_nonincr_bylang %>%
+  filter(utterance_length <= 16) %>% 
+  select(utterance_length,avg_production_score,avg_nb_utterances) %>% 
+  mutate(model = "cbl-non incremental")
+
+df.lstm_plot2 = df.lstm_prod_results_bylang %>%
+  filter(utterance_length <= 16) %>% 
+  select(utterance_length,avg_production_score,avg_nb_utterances) %>% 
+  mutate(model = "lstm")
+
+df.chance_plot2 = df.lstm_plot2 %>% 
+  select(utterance_length) %>% 
+  mutate(production_score = 1/factorial(utterance_length), 
+         avg_nb_utterances=1, 
+         model="chance")
+
+df.plot2 = rbind(df.cbl_plot2,df.lstm_plot2)
+
+#overall_score_16 = sum(df.plot2$total_avg_produced)/sum(df.plot2$total_nb_utterances)
+
+ggplot(NULL,aes(x=utterance_length)) +
+  geom_point(data= df.plot2, aes(y=avg_production_score, color = model, size = avg_nb_utterances), shape=19) +
+  geom_line(data=df.chance_plot2, aes(y=production_score), linetype="dashed")+
+#  geom_text(aes(label=total_nb_utterances),hjust=0, vjust=0) +
+  ylab("Production score") +
+  xlab("Utterance length (nb words)") +
+  scale_y_continuous(limits = c(0.0, 1.0))+
+  scale_x_continuous(breaks = c(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16))+
+  ggtitle("Overall production score by utterance length with counts")
+```
+
+```{r cbl_greedy_beam}
+#Only take sentences with 16 words or less
+df.cbl_plot2 = df.cbl_0.4test_bylang %>%
+  filter(utterance_length <= 16) %>% 
+  select(utterance_length,avg_production_score,avg_nb_utterances) %>% 
+  mutate(model = "CBLs")
+
+df.lstm_plot2 = df.lstm_prod_results_bylang %>%
+  filter(utterance_length <= 16) %>% 
+  select(utterance_length,avg_production_score,avg_nb_utterances) %>% 
+  mutate(model = "LSTMs")
+
+df.chance_plot2 = df.lstm_plot2 %>% 
+  select(utterance_length) %>% 
+  mutate(production_score = 1/factorial(utterance_length), 
+         avg_nb_utterances=1, 
+         model="chance")
+
+df.plot2 = rbind(df.cbl_plot2,df.lstm_plot2)
+
+#overall_score_16 = sum(df.plot2$total_avg_produced)/sum(df.plot2$total_nb_utterances)
+
+ggplot(NULL,aes(x=utterance_length)) +
+  geom_point(data= df.plot2, aes(y=avg_production_score, color = model, size = avg_nb_utterances), shape=19) +
+  geom_line(data=df.chance_plot2, aes(y=production_score), linetype="dashed")+
+#  geom_text(aes(label=total_nb_utterances),hjust=0, vjust=0) +
+  ylab("Greedy production score") +
+  xlab("Utterance length (number of tokens)") +
+  scale_y_continuous(limits = c(0.0, 1.0))+
+  scale_x_continuous(breaks = c(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16))+
+  ggtitle("Model performance by utterance length with counts")+
+  theme(text=element_text(size=11,  family="Times New Roman"), legend.title = element_text( size = 10), legend.position = c(0.85, 0.7))+
+  labs(color = "Models", size = "Mean test utterance count")
+
+
+```
+
+```{r token_counts}
+token_count_file = '../../data/results/token_counts_eng.csv'
+df.token_counts = read.csv(token_count_file) 
+df.token_counts = df.token_counts %>%  mutate(child_name = file) %>% 
+  select(child_name, train_tokens, test_tokens)
+  
+```
+
+```{r avg_bychild}
+my_get_performance_bysize <- function(df.bychild, df.token_counts){
+  df.avg_bychild = df.bychild %>% 
+  ungroup() %>% 
+  group_by(child_name) %>% 
+  select(child_name, nb_utterances, produced) %>% 
+  summarise_if(is.numeric, sum) %>% 
+  mutate(production_score = produced/nb_utterances) %>% 
+  select(child_name, production_score) %>% 
+  left_join(.,df.token_counts, by= "child_name")
+
+return(df.avg_bychild)
+}
+
+
+```
+
+
+
+```{r cbl_bysize}
+df.cbl_0.4test_bysize = my_get_performance_bysize(df.cbl_0.4test_bychild, df.token_counts)
+df.lstm_bysize = my_get_performance_bysize(df.lstm_bychild, df.token_counts)
+
+```
+```{r plot1_incr_bysize}
+ggplot(df.cbl_0.4test_bysize, aes(x=train_tokens, y=production_score)) +
+  geom_point()+
+  ylab("Production score") +
+  xlab("Number of Tokens in directed speech (training set)")+ 
+  scale_y_continuous(limits = c(0.0, 1.0))+
+  ggtitle("CBL incremental: production score by size of training data")
+```
+```{r lstm_bysize}
+df.lstm_bysize = my_get_performance_bysize(df.lstm_bychild, df.token_counts)
+```
+
+
+```{r plot1_lstm_bysize}
+ggplot(df.lstm_bysize, aes(x=train_tokens, y=production_score)) +
+  geom_point()+
+  ylab("Production score") +
+  xlab("Number of Tokens in directed speech (training set)")+ 
+  scale_y_continuous(limits = c(0.0, 1.0))+
+  ggtitle("LSTM incremental: production score by size of training data")
+```
+
+## BEAM SEARCH RESULTS
+
+
+```{r beam}
+result_dir = "../../data/results/cbl-baseline/prod_results/run4_0.4test_beam5"
+df.cbl_beam5 = my_get_prod_results(result_dir)
+df.cbl_beam5_bychild = my_get_prod_results_bychild(df.cbl_beam5)
+df.cbl_beam5_bylang = my_get_avg_prod_results_bylang(df.cbl_beam5_bychild)
+cbl_beam5_overall_eng = my_get_overall_score_bylang(df.cbl_beam5_bylang)
+```
+
+```{r beam_plot1}
+#Only take sentences with 16 words or less
+#Only take sentences with 16 words or less
+df.cbl_plot2 = df.cbl_0.4test_bylang %>%
+  filter(utterance_length <= 16) %>% 
+  select(utterance_length,avg_production_score,avg_nb_utterances) %>% 
+  mutate(model = "Greedy")
+
+df.lstm_plot2 = df.cbl_beam5_bylang %>%
+  filter(utterance_length <= 16) %>% 
+  select(utterance_length,avg_production_score,avg_nb_utterances) %>% 
+  mutate(model = "Beam Search 5")
+
+df.chance_plot2 = df.lstm_plot2 %>% 
+  select(utterance_length) %>% 
+  mutate(production_score = 1/factorial(utterance_length), 
+         avg_nb_utterances=1, 
+         model="chance")
+
+df.plot2 = rbind(df.cbl_plot2,df.lstm_plot2)
+
+#overall_score_16 = sum(df.plot2$total_avg_produced)/sum(df.plot2$total_nb_utterances)
+
+ggplot(NULL,aes(x=utterance_length)) +
+  geom_point(data= df.plot2, aes(y=avg_production_score, color = model, size = avg_nb_utterances), shape=19) +
+  geom_line(data=df.chance_plot2, aes(y=production_score), linetype="dashed")+
+#  geom_text(aes(label=total_nb_utterances),hjust=0, vjust=0) +
+  ylab("Production score") +
+  xlab("Utterance length (number of tokens)") +
+  scale_y_continuous(limits = c(0.0, 1.0))+
+  scale_x_continuous(breaks = c(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16))+
+  ggtitle("CBL performance by utterance length with counts")+
+  theme(text=element_text(size=11,  family="Times New Roman"), legend.title = element_text( size = 10), legend.position = c(0.85, 0.7))+
+  labs(color = "Metric", size = "Mean test utterance count")
+```
+
+```{r beam1}
+result_dir = "../../data/results/lstm-baseline/prod_results/fourth_run_0.4test/beam2"
+result_dir = "../../data/results/lstm2-baseline/beam"
+df.lstm_beam5 = my_get_prod_results(result_dir)
+df.lstm_beam5_bychild = my_get_prod_results_bychild(df.lstm_beam5)
+df.lstm_beam5_bylang = my_get_avg_prod_results_bylang(df.lstm_beam5_bychild)
+lstm_beam5_overall_eng = my_get_overall_score_bylang(df.lstm_beam5_bylang)
+```
+
+```{r beam2}
+result_dir = "../../data/results/lstm-baseline/prod_results/fourth_run_0.4test/greedy"
+result_dir = "../../data/results/lstm2-baseline/greedy"
+df.lstm_greedy = my_get_prod_results(result_dir)
+df.lstm_greedy_bychild = my_get_prod_results_bychild(df.lstm_greedy)
+df.lstm_greedy_bylang = my_get_avg_prod_results_bylang(df.lstm_greedy_bychild)
+lstm_greedy_overall_eng = my_get_overall_score_bylang(df.lstm_greedy_bylang)
+```
+
+```{r beam_plot2}
+#Only take sentences with 16 words or less
+#Only take sentences with 16 words or less
+df.cbl_plot2 = df.lstm_prod_results_bylang  %>%
+  filter(utterance_length <= 16) %>% 
+  select(utterance_length,avg_production_score,avg_nb_utterances) %>% 
+  mutate(model = "Greedy")
+
+df.lstm_plot2 = df.lstm_beam5_bylang %>%
+  filter(utterance_length <= 16) %>% 
+  select(utterance_length,avg_production_score,avg_nb_utterances) %>% 
+  mutate(model = "Beam Search 5")
+
+df.chance_plot2 = df.lstm_plot2 %>% 
+  select(utterance_length) %>% 
+  mutate(production_score = 1/factorial(utterance_length), 
+         avg_nb_utterances=1, 
+         model="chance")
+
+df.plot2 = rbind(df.cbl_plot2,df.lstm_plot2)
+
+#overall_score_16 = sum(df.plot2$total_avg_produced)/sum(df.plot2$total_nb_utterances)
+
+ggplot(NULL,aes(x=utterance_length)) +
+  geom_point(data= df.plot2, aes(y=avg_production_score, color = model, size = avg_nb_utterances), shape=19) +
+  geom_line(data=df.chance_plot2, aes(y=production_score), linetype="dashed")+
+#  geom_text(aes(label=total_nb_utterances),hjust=0, vjust=0) +
+  ylab("Production score") +
+  xlab("Utterance length (number of tokens)") +
+  scale_y_continuous(limits = c(0.0, 1.0))+
+  scale_x_continuous(breaks = c(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16))+
+  ggtitle("LSTM performance by utterance length with counts")+
+  theme(text=element_text(size=11,  family="Times New Roman"), legend.title = element_text( size = 10), legend.position = c(0.85, 0.7))+
+  labs(color = "Metric", size = "Mean test utterance count")
+```
+
+### Final plot for abstract
+
+```{r final_plot}
+#Only take sentences with 16 words or less
+df.cbl_greedy = df.cbl_0.4test_bylang %>%
+  filter(utterance_length <= 16) %>% 
+  select(utterance_length,avg_production_score,avg_nb_utterances) %>% 
+  mutate(model = "CBLs")
+
+df.lstm_greedy = df.lstm_prod_results_bylang %>%
+  filter(utterance_length <= 16) %>% 
+  select(utterance_length,avg_production_score,avg_nb_utterances) %>% 
+  mutate(model = "LSTMs")
+
+df.greedy = rbind(df.lstm_greedy, df.cbl_greedy) %>% mutate(encoder= "Greedy decoder")
+
+df.cbl_beam = df.cbl_beam5_bylang %>%
+  filter(utterance_length <= 16) %>% 
+  select(utterance_length,avg_production_score,avg_nb_utterances) %>% 
+  mutate(model = "CBLs")
+
+df.lstm_beam = df.lstm_beam5_bylang %>%
+  filter(utterance_length <= 16) %>% 
+  select(utterance_length,avg_production_score,avg_nb_utterances) %>% 
+  mutate(model = "LSTMs")
+
+df.beam = rbind(df.lstm_beam, df.cbl_beam) %>% mutate(encoder= "Beam Search (k=5) decoder")
+
+df.all_models = rbind(df.greedy, df.beam)
+
+df.chance = df.lstm_plot2 %>% 
+  select(utterance_length) %>% 
+  mutate(production_score = 1/factorial(utterance_length), 
+         avg_nb_utterances=1, 
+         model="chance")
+
+
+
+#overall_score_16 = sum(df.plot2$total_avg_produced)/sum(df.plot2$total_nb_utterances)
+
+ggplot(NULL,aes(x=utterance_length)) +
+  geom_line(data= df.all_models, aes(y=avg_production_score, color = model), size= 1) +
+  geom_point(data= df.all_models, aes(y=avg_production_score, color = model, size = avg_nb_utterances), shape=19, alpha=0.8) +
+  facet_grid(. ~ encoder)+
+  geom_line(data=df.chance_plot2, aes(y=production_score), linetype="dashed")+
+#  geom_text(aes(label=total_nb_utterances),hjust=0, vjust=0) +
+  ylab("Production score") +
+  xlab("Utterance length (number of tokens)") +
+  scale_y_continuous(limits = c(0.0, 1.0))+
+  scale_x_continuous(breaks = c(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16))+
+  ggtitle("Mean model performance by utterance length")+
+  theme(text=element_text(size=13,  family="Times New Roman"), legend.title = element_text( size = 12), legend.position = c(0.9, 0.6),  plot.title = element_text(hjust = 0.5))+
+  labs(color = "Models", size = "Mean test utterance count")
+
+
+```
+
+## Get confidence intervals
+```{r ci}
+ get_overall_bychild <- function(df.prod_results_bychild){
+  df.overall_bychild = df.prod_results_bychild %>%
+  group_by(child_name) %>%
+  mutate(total_nb_utterances = sum(nb_utterances)) %>% 
+  mutate(total_nb_produced = sum(produced)) %>% 
+  mutate(overall_prod_score = total_nb_produced/total_nb_utterances) %>% 
+  select(child_name, overall_prod_score) %>%
+  ungroup() %>%
+  unique()
+  return(df.overall_bychild)
+ }
+
+get_error <- function(prod_score){
+  error <- qnorm(0.975)*sd(prod_score)/sqrt(length(prod_score))
+  return(error)
+}
+
+df.lstm_beam_all_bychild = get_overall_bychild(df.lstm_beam5_bychild)
+df.lstm_greedy_all_bychild = get_overall_bychild(df.lstm_greedy_bychild)
+df.cbl_beam_all_bychild = get_overall_bychild(df.cbl_beam5_bychild)
+df.cbl_greedy_all_bychild = get_overall_bychild(df.cbl_0.4test_bychild)
+
+lstm_beam_mean = mean(df.lstm_beam_all_bychild$overall_prod_score)
+lstm_greedy_mean = mean(df.lstm_greedy_all_bychild$overall_prod_score)
+cbl_beam_mean = mean(df.cbl_beam_all_bychild$overall_prod_score)
+cbl_greedy_mean = mean(df.cbl_greedy_all_bychild$overall_prod_score)
+
+error =get_error(df.cbl_beam_all_bychild$overall_prod_score)
+
+
+cbl_beam_mean +error
+
+d1 = df.lstm_greedy_all_bychild %>% mutate(lstm_prod_score = overall_prod_score) %>% select(child_name,lstm_prod_score)
+d2 = df.cbl_greedy_all_bychild %>% mutate(cbl_prod_score = overall_prod_score) %>% select(child_name,cbl_prod_score)
+greedy_t = left_join(d1, d2)
+
+greedy = t.test(greedy_t$lstm_prod_score,greedy_t$cbl_prod_score)
+
+d1 = df.lstm_beam_all_bychild %>% arrange(child_name)
+d2 = df.cbl_beam_all_bychild %>% filter(child_name != "Thomas.beam_prod_result") %>% arrange(child_name)
+
+
+beam = t.test(d1$overall_prod_score,d2$overall_prod_score)
+
+```
+
+## Get overall performance by corpus size for beam
+```{r beam_bycorpussize}
+df.cbl_greedy_bysize = my_get_performance_bysize(df.cbl_0.4test_bychild, df.token_counts)
+df.lstm_greedy_bysize = my_get_performance_bysize(df.lstm_bychild, df.token_counts)
+df.cbl_beam_bysize = my_get_performance_bysize(df.cbl_beam5_bychild, df.token_counts)
+df.lstm_beam_bysize = my_get_performance_bysize(df.lstm_beam5_bychild, df.token_counts)
+
+df.cbl_beam_bysize = df.cbl_beam_bysize %>% mutate(model = "CBL", encoder = "Beam Search (k=5) decoder")
+df.lstm_beam_bysize = df.lstm_beam_bysize %>% mutate(model = "LSTM", encoder = "Beam Search (k=5) decoder")
+df.cbl_greedy_bysize = df.cbl_greedy_bysize %>% mutate(model = "CBL", encoder = "Greedy decoder")
+df.lstm_greedy_bysize = df.lstm_greedy_bysize %>% mutate(model = "LSTM", encoder = "Greedy decoder")
+
+df.all_bysize = rbind(df.cbl_beam_bysize,df.lstm_beam_bysize,df.cbl_greedy_bysize,df.lstm_greedy_bysize)
+```
+
+```{r plot_all_bysize}
+ggplot(df.all_bysize, aes(x=log(train_tokens), y=production_score, group=model)) +
+  geom_point(size = 2, alpha=0.8, color="dark blue")+
+  facet_wrap(vars(model, encoder)) +
+  ylab("Production score") +
+  xlab("log(nb of tokens)")+ 
+  scale_y_continuous(limits = c(0.0, 1.0))+
+  ggtitle("Production score by size of corpus training data")+
+  theme(text=element_text(size=13,  family="Times New Roman"), legend.title = element_text( size = 12), legend.position = c(0.9, 0.6),  plot.title = element_text(hjust = 0.5))
+```
+
+## Plot overall score
+```{r overal_comparison}
+ggplot(data = df.all_bysize, 
+            mapping = aes(x = model, y = production_score)) +
+  geom_line(aes(group = child_name), alpha = 0.5, color="dark blue") +
+  geom_point(alpha = 0.5, color="dark blue") +
+  stat_summary(fun.y = "mean", 
+               geom = "point",
+               shape = 21, 
+               fill = "red",
+               size = 4) +
+  facet_wrap(vars(encoder)) +
+  ylab("Production score") +
+  ggtitle("Production score by model")+
+  theme(text=element_text(size=13,  family="Times New Roman"), legend.title = element_text( size = 12), legend.position = c(0.9, 0.6),  plot.title = element_text(hjust = 0.5))
+
+```
+
+
+## Sanity check
+The following is a comparison of the predicted overall performance on the production task between the modified model and the original CBL model code. We want these performances to march (with a minimal amount of variation).
+
+(Modified model ) This calculates the overall performance for each child transcript, regardless of sentence length, and then averages over them.
+```{r eval=FALSE}
+df.overall_bychild = df.prod_results_bychild %>%
+  group_by(child_name) %>%
+  mutate(total_nb_utterances = sum(nb_utterances)) %>% 
+  mutate(total_nb_produced = sum(produced)) %>% 
+  mutate(overall_prod_score = total_nb_produced/total_nb_utterances) %>% 
+  select(child_name, overall_prod_score) %>%
+  ungroup() %>%
+  unique()
+
+overall_bychild = sum(df.overall_bychild$overall_prod_score)/nrow(df.overall_bychild)
+print(overall_bychild)
+```
+
+
+(Original CBL model code) The following takes the result from
+```{r eval=FALSE}
+
+original_bychild_results = read.csv("../../data/results/cbl-baseline/original_eng_results.csv", header = FALSE)
+
+original_overall_bychild = sum(original_bychild_results$V1)/nrow(original_bychild_results)
+
+print(original_overall_bychild)
+```

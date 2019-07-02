@@ -1,0 +1,4 @@
+iter,utterance_length,nb_utterances,produced,production_score
+1,2,55,44,0.8
+1,3,17,6,0.35294117647058826
+1,4,4,1,0.25
