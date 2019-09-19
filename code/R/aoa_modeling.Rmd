@@ -1,0 +1,342 @@
+---
+title: AoA modeling
+output:
+  html_notebook:
+    highlight: tango
+    theme: spacelab
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(glue)
+library(broom)
+library(langcog)
+library(stringr)
+library(lme4)
+library(modelr)
+#library(jglmm)
+```
+
+Data for model predictors originally from Braginsky et al. 2019  ('https://github.com/mikabr/aoa-prediction/blob/master/aoa_unified/aoa_analyses/aoa_modeling.Rmd')
+
+```{r load_data}
+load("../../data/aoa_predictors/uni_joined.RData")
+uni_joined_eng <- uni_joined %>% filter(language == "English (American)")
+
+predictors <- c("frequency", "MLU", "final_frequency", "solo_frequency",
+                "num_phons", "concreteness", "valence", "arousal", "babiness")
+.alpha <- 0.05
+set.seed(42)
+```
+
+Get model data and list of uni_lemmas for avg_surprisal calculation
+```{r uni_lemma}
+model_data <- uni_joined_eng %>% 
+  select(uni_lemma, words, lexical_classes, !!predictors) %>%
+  distinct() %>%
+  mutate(lexical_category = if_else(
+           str_detect(lexical_classes, ","), "other", lexical_classes
+         ) %>%
+           as_factor() %>%
+           fct_collapse("predicates" = c("verbs", "adjectives", "adverbs"))) %>%
+  select(-lexical_classes)
+
+model_data<- model_data %>% 
+  mutate(word_clean = gsub(" [(].*$","",words)) %>%
+  mutate(word_clean = str_remove(word_clean, "['`*]")) %>% 
+  filter(!str_detect(word_clean, " ")) 
+
+df.uni_lemma <- df.model_data %>% select(word_clean, uni_lemma)
+
+write.table(df.uni_lemma, file=paste("../../data/aoa_predictors/aoa_words.csv"), sep = "\t", quote = FALSE, col.names = TRUE, row.names = FALSE)
+
+save(model_data, file = "../../data/aoa_predictors/model_data.RData")
+```
+
+After running python script to get the average model surprisal on these words for all models, load results
+
+```{r load}
+
+load("../../data/aoa_predictors/model_data.RData")
+
+my_get_transcript_results <- function(file){
+  df = read.csv(file)
+  #Extract child name from file name and add variable.
+  file_name = strsplit(file_path_sans_ext(file), "/")[[1]]
+  file_name = file_name[(length(file_name))]
+  child_name = strsplit(file_name,".aoa_result", fixed=TRUE)[[1]]
+  df = df %>%
+    mutate(child_name = child_name)
+  return(df)
+}
+
+my_get_prod_results <- function(result_dir){
+  files = list.files(path=result_dir, pattern="*.csv", full.names=TRUE, recursive=FALSE)
+  df.prod_results = files %>% map(my_get_transcript_results) %>% reduce(rbind)
+  return(df.prod_results)
+}
+
+result_dir = "../../data/results/aoa_surprisals/"
+model_surprisals = my_get_prod_results(result_dir)
+```
+
+Impute and scale data for input into models.
+```{r uni_model_data}
+surp_model_data <- model_surprisals %>% 
+  select(uni_lemma, avg_surprisal, child_name) %>% 
+  left_join(model_data) %>% 
+  group_by(child_name) %>%
+  # mutate_at(vars(!!predictors), funs(as.numeric(scale(.)))) %>%
+  nest()
+
+predictors <- c("avg_surprisal","frequency", "MLU", "final_frequency", "solo_frequency", "num_phons", "concreteness", "valence", "arousal", "babiness")
+
+pred_sources <- list(
+  c("frequency", "MLU", "final_frequency", "solo_frequency"),
+  c("valence", "arousal"),
+  "concreteness", "babiness", "num_phons", "avg_surprisal"
+)
+
+fit_predictor <- function(pred, d) {
+  xs <- pred_sources %>% discard(~pred %in% .x) %>% unlist()
+  x_str <- xs %>% paste(collapse = " + ")
+  lm(as.formula(glue("{pred} ~ {x_str}")), data = d) %>%
+    augment(newdata = d) %>%
+    select(uni_lemma, lexical_category, .fitted)
+}
+
+max_steps <- 20
+iterate_predictors <- function(lang_data) {
+  missing <- lang_data %>%
+    gather(predictor, value, !!predictors) %>%
+    mutate(missing = is.na(value)) %>%
+    select(-value) %>%
+    spread(predictor, missing)
+  predictor_order <- lang_data %>%
+    gather(predictor, value, !!predictors) %>%
+    group_by(predictor) %>%
+    summarise(num_na = sum(is.na(value))) %>%
+    filter(num_na != 0) %>%
+    arrange(num_na) %>%
+    pull(predictor)
+  imputation_data <- lang_data %>%
+    mutate_at(vars(!!predictors),
+              funs(as.numeric(Hmisc::impute(., fun = "random"))))
+  for (i in 0:max_steps) {
+    pred <- predictor_order[(i %% length(predictor_order)) + 1]
+    imputation_fits <- fit_predictor(pred, imputation_data)
+    imputation_data <- missing %>%
+      select(uni_lemma, lexical_category, !!pred) %>%
+      rename(missing = !!pred) %>%
+      right_join(imputation_data) %>%
+      left_join(imputation_fits) %>%
+      mutate_at(vars(pred), funs(if_else(is.na(missing), .fitted, .))) %>%
+      select(-.fitted, -missing)
+  }
+  return(imputation_data)
+}
+
+model_data_imputed <- surp_model_data %>%
+  mutate(imputed = map(data, iterate_predictors))
+
+uni_model_data <- model_data_imputed %>%
+  select(-data) %>%
+  unnest() %>%
+  group_by(child_name) %>%
+  mutate_at(vars(predictors), funs(as.numeric(scale(.)))) %>%
+  right_join(uni_joined_eng %>% select(measure, uni_lemma, age, num_true,
+                                   num_false)) %>%
+  filter(!is.na(child_name)) %>% 
+  group_by(child_name, measure) %>%
+  mutate(unscaled_age = age, age = scale(age),
+         total = as.double(num_true + num_false), prop = num_true / total)
+```
+
+Save point -- model input data.
+```{r uni_model_data_save}
+save(model_data_imputed, file = "../../data/aoa_predictors/model_data_imputed.RData")
+save(uni_model_data, file = "../../data/aoa_predictors/uni_model_data.RData")
+```
+
+Formulae to be tested
+```{r formulae}
+full_set = ~ (age | item) + age * frequency + age * MLU + age * final_frequency + age * solo_frequency + age * num_phons + age * concreteness + age * valence + age * arousal + age * babiness + lexical_category * frequency + lexical_category * MLU + lexical_category * final_frequency + lexical_category * solo_frequency + lexical_category *  num_phons + lexical_category * concreteness + lexical_category * valence + lexical_category * arousal + lexical_category * babiness
+
+freq_only = ~ (age | item) + age * frequency + lexical_category * frequency
+  
+freq_MLU = ~ (age | item) + age * frequency + age * MLU + lexical_category * frequency + lexical_category * MLU
+  
+full_supr = ~ (age | item) + age * avg_surprisal + age * frequency + age * MLU + age * final_frequency + age * solo_frequency + age * num_phons + age * concreteness + age * valence + age * arousal + age * babiness + lexical_category * avg_surprisal + lexical_category * frequency + lexical_category * MLU + lexical_category * final_frequency + lexical_category * solo_frequency + lexical_category * num_phons + lexical_category * concreteness + lexical_category * valence + lexical_category * arousal + lexical_category * babiness
+  
+freq_surp = ~ (age | item) + age * frequency + age * avg_surprisal + lexical_category * frequency + lexical_category * avg_surprisal
+  
+freq_MLU_supr = ~ (age | item) + age * frequency + age * MLU + age * avg_surprisal + lexical_category * frequency + lexical_category * MLU + lexical_category * avg_surprisal
+
+formulae <- formulas(~prop, full_set, freq_only, freq_MLU, full_supr, freq_surp, freq_MLU_supr)
+
+```
+
+
+What are contrasts in lmer?
+
+```{r fit_models}
+fit_model <- function(data, formulae, contrasts = NULL) {
+  group <- unique(group_data$group)
+  message(glue("Fitting model for {group}..."))
+  fit_with(data, lmer, formulae, family = "binomial",
+          weights = data$total, contrasts = contrasts)
+}
+
+group_data <- uni_model_data %>%
+  mutate(group = paste(child_name, measure),
+         lexical_category = lexical_category %>% fct_relevel("other")) %>%
+  select(child_name, measure, group, lexical_category, item = uni_lemma, prop,
+         total, age, !!predictors) %>%
+  group_by(child_name, measure) %>%
+  nest()
+
+
+bychildname_models <- group_data %>%
+  mutate(model = data %>%
+           map(~fit_model(.x, formulae)))
+
+bychildname_fits <- bychildname_models %>%
+  mutate(results = map(model, tidy))
+
+#save(lang_lexcat_fits, file = "../saved_data/_lang_lexcat_fits.RData")
+
+```
+
+```{r loo_mse}
+
+
+
+
+```
+
+
+
+
+## Mika's code
+
+Fit models for each language and measure.
+```{r fit_models}
+effects <- paste("age", predictors, sep = " * ")
+effects_formula <- as.formula(
+  glue("prop ~ (age | item) + {paste(effects, collapse = ' + ')}")
+)
+lex_effects <- paste("lexical_category", predictors, sep = " * ")
+lex_effects_formula <- as.formula(
+  glue("prop ~ (age | item) + {paste(c(effects, lex_effects), collapse = ' + ')}")
+)
+
+fit_group_model <- function(group_data, group_formula, contrasts = NULL) {
+  group <- unique(group_data$group)
+  message(glue("Fitting model for {group}..."))
+    jglmm(formula = group_formula, data = group_data, family = "binomial",
+          weights = group_data$total, contrasts = contrasts)
+}
+
+by_child_model_data <- uni_model_data %>%
+  mutate(group = paste(child_name, measure),
+         lexical_category = lexical_category %>% fct_relevel("other")) %>%
+  select(child_name, measure, group, lexical_category, item = uni_lemma, prop,
+         total, age, !!predictors) %>%
+  group_by(child_name, measure) %>%
+  nest()
+
+lang_lexcat_models <- by_lang_data %>%
+  mutate(model = data %>%
+           map(~fit_group_model(.x, lex_effects_formula,
+                                contrasts = list(lexical_category = "effects"))))
+
+lang_lexcat_fits <- lang_lexcat_models %>%
+  mutate(results = map(model, tidy))
+save(lang_lexcat_fits, file = "../saved_data/_lang_lexcat_fits.RData")
+```
+
+Spot check Julia results against lme4 results.
+```{r model_comp}
+eng_data <- by_child_model_data %>%
+  filter(child_name == "Will", measure == "understands") %>%
+  pull(data) %>%
+  .[[1]]
+
+eng_model_int <- fit_group_model(eng_data, lex_effects_formula,
+                                 contrasts = list(lexical_category = "effects"))
+eng_effects_int <- tidy(eng_model_int)
+
+eng_model_int_r <- glmer(
+  lex_effects_formula,
+  mutate(eng_data, lexical_category = lexical_category %>%
+           fct_relevel("nouns", "function_words", "predicates")),
+  family = "binomial", weights = eng_data$total,
+  contrasts = list(lexical_category = contr.sum)
+)
+current <- getME(eng_model_int_r, c("theta", "fixef"))
+eng_model_int_r_update <- update(eng_model_int_r, start = current)
+eng_effects_int_r <- tidy(eng_model_int_r_update) %>% filter(group == "fixed")
+
+eng_effects_int_r %>% filter(group == "fixed") %>% select(term, estimate) %>%
+  bind_cols(eng_effects_int %>% select(term, estimate)) %>%
+  mutate(diff = abs(estimate - estimate1)) %>% arrange(desc(diff))
+```
+
+Tidy up coefficients from models.
+```{r lang_lexcat_coefs}
+measure_levels <- c("understands", "produces")
+
+lang_lexcat_coefs <- lang_lexcat_fits %>%
+  select(language, measure, results) %>%
+  unnest() %>%
+  rename(std_error = std.error,
+         z_value = z.value,
+         p_value = p.value) %>%
+  separate(term, c("term", "effect"), sep = " & ", fill = "right") %>%
+  mutate(effect = if_else(is.na(effect), "main effect", effect),
+         term = if_else(term == "age" & effect != "main effect",
+                        effect, term),
+         effect = if_else(term == effect, "age", effect),
+         effect = if_else(effect == "main effect", effect,
+                          paste("interaction with", effect)),
+         effect = effect %>%
+           fct_relevel("main effect",
+                       "interaction with age",
+                       "interaction with lexical_category: nouns",
+                       "interaction with lexical_category: predicates"),
+         measure = factor(measure, levels = measure_levels),
+         signif = p_value < .alpha) %>%
+  group_by(language, measure, term, effect) %>%
+  nest()
+
+predictor_effects <- lang_lexcat_coefs %>%
+  filter(effect == "main effect", term %in% predictors) %>%
+  rename(predictor_effect = data) %>%
+  select(-effect)
+
+lexcat_effects <- lang_lexcat_coefs %>%
+  filter(effect == "main effect",
+         str_detect(term, "lexical_category")) %>%
+  mutate(lexical_category = str_match(term, ": (.*)$")[,2]) %>%
+  rename(lexcat_effect = data) %>%
+  select(-term, -effect)
+
+lexcat_coefs <- lang_lexcat_coefs %>%
+  filter(str_detect(effect, "lexical_category")) %>%
+  mutate(lexical_category = str_match(effect, ": (.*)$")[,2]) %>%
+  rename(interaction = data) %>%
+  select(-effect) %>%
+  left_join(predictor_effects) %>%
+  left_join(lexcat_effects) %>%
+  unnest(.sep = "_") %>%
+  mutate(estimate = predictor_effect_estimate +
+           lexcat_effect_estimate + interaction_estimate)
+save(lexcat_coefs, file = "../saved_data/lexcat_coefs.RData")
+
+lang_coefs <- lang_lexcat_coefs %>%
+  filter(str_detect(effect, "main|age"), term %in% predictors) %>%
+  unnest()
+save(lang_coefs, file = "../saved_data/lang_coefs.RData")
+```
