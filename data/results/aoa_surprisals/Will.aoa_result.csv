@@ -1,18 +1,18 @@
 word, uni_lemma, avg_surprisal
 airplane,airplane,NA
-all,all,4.336086591084798
+all,all,4.397348912556966
 animal,animal,NA
-another,another,5.048420111338298
+another,another,5.26298398237962
 apple,apple,NA
 arm,arm,NA
 asleep,asleep,NA
 aunt,aunt,NA
-away,away,7.497418403625488
+away,away,7.097402572631836
 baby,baby,NA
 babysitter,babysitter,NA
-back,back (location),4.7157210350036625
+back,back (location),4.731267881393433
 bad,bad,NA
-ball,ball,4.86828030858721
+ball,ball,4.824536119188581
 balloon,balloon,NA
 banana,banana,NA
 bath,bath,NA
@@ -21,28 +21,28 @@ bathtub,bathtub,NA
 beach,beach,NA
 beads,beads,NA
 bear,bear,NA
-bed,bed,7.111259937286377
+bed,bed,6.711003303527832
 bedroom,bedroom,NA
 bee,bee,NA
 bib,bib,NA
 bicycle,bicycle,NA
-big,big,5.830909967422485
-bird,bird,5.327323981693813
-bite,bite,5.896910508473714
+big,big,5.5770556926727295
+bird,bird,5.419106165568034
+bite,bite,5.133177280426025
 blanket,blanket,NA
-block,block,6.449502944946289
-blow,blow,5.716291109720866
+block,block,5.777190208435059
+blow,blow,6.060160296303885
 blue,blue,NA
-book,book,5.328243970870972
-boots,boots,6.368101596832275
+book,book,5.461752573649089
+boots,boots,5.9891791343688965
 bottle,bottle,NA
 bowl,bowl,NA
 box,box,NA
-boy,boy,4.59014876683553
+boy,boy,4.997586309909821
 bread,bread,NA
 break,break,NA
 breakfast,breakfast,NA
-bring,bring,7.250469207763672
+bring,bring,6.573970556259155
 broken,broken,NA
 broom,broom,NA
 brother,brother,NA
@@ -58,7 +58,7 @@ button,button,NA
 bye,bye,NA
 cake,cake,NA
 candy,candy,NA
-car,car,NA
+car,car,6.201098442077637
 careful,careful,NA
 carrots,carrots,NA
 cat,cat,NA
@@ -74,19 +74,19 @@ church,church,NA
 clean,clean (action),NA
 clean,clean (description),NA
 clock,clock,NA
-close,close,6.223049163818359
-coat,coat,6.152021408081055
+close,close,6.227886199951172
+coat,coat,6.4941606521606445
 cockadoodledoo,cockadoodledoo,NA
 coffee,coffee,NA
-cold,cold,5.6949180364608765
+cold,cold,5.568509578704834
 comb,comb (object),NA
-cookie,cookie,5.0825215975443525
+cookie,cookie,5.1636842886606855
 couch,couch,NA
 cow,cow,NA
 cracker,cracker,NA
 crib,crib,NA
 cry,cry,NA
-cup,cup,5.941596508026123
+cup,cup,NA
 cute,cute,NA
 daddy,daddy,NA
 dance,dance,NA
@@ -99,10 +99,10 @@ dirty,dirty,NA
 dish,dish,NA
 dog,dog,NA
 doll,doll,NA
-dont,don't,4.685370547430856
+dont,don't,4.667116165161133
 donkey,donkey,NA
 door,door,NA
-down,down,5.749709367752075
+down,down,6.081128835678101
 draw,draw,NA
 drawer,drawer,NA
 dress,dress (object),NA
@@ -112,18 +112,18 @@ drive,drive,NA
 dry,dry (description),NA
 duck,duck,NA
 ear,ear,NA
-eat,eat,5.418322515487671
+eat,eat,5.416777420043945
 egg,egg,NA
 elephant,elephant,NA
 empty,empty,NA
 eye,eye,NA
-face,face,6.353496313095093
-fall,fall,6.636102676391602
+face,face,5.974331855773926
+fall,fall,6.736781597137451
 fast,fast,NA
 feed,feed,NA
 fine,fine,NA
 finger,finger,NA
-finish,finish,6.832664966583252
+finish,finish,6.508278846740723
 firetruck,firetruck,NA
 fish,fish (animal),NA
 fish,fish (food),NA
@@ -135,44 +135,44 @@ frog,frog,NA
 garage,garage,NA
 garden,garden,NA
 gentle,gentle,NA
-get,get,5.455930709838867
+get,get,6.463489055633545
 giraffe,giraffe,NA
 girl,girl,NA
 give,give,NA
 glass,glass,NA
 glasses,glasses,NA
-go,go,4.926491780714556
-good,good,4.332497417926788
+go,go,4.944620499244103
+good,good,4.563980281352997
 goose,goose,NA
 grandma,grandma,NA
 grandpa,grandpa,NA
 grrr,grrr,NA
-hair,hair,6.3989081382751465
-hammer,hammer,5.538881778717041
+hair,hair,6.430600166320801
+hammer,hammer,6.278085708618164
 hand,hand,NA
-happy,happy,7.198477745056152
+happy,happy,5.978708744049072
 hard,hard,NA
-hat,hat,6.173348426818848
+hat,hat,5.9307487805684405
 head,head,NA
 hello,hello,NA
 help,help,NA
-her,her,5.821035265922546
+her,her,5.795568227767944
 hi,hi,NA
-his,his,5.758889198303223
-hit,hit,6.5923285484313965
-home,home,7.368545055389404
+his,his,5.585638523101807
+hit,hit,6.896831035614014
+home,home,6.435257911682129
 horse,horse,NA
-hot,hot,6.670681953430176
-house,house,5.731298446655273
-how,how,6.005048751831055
+hot,hot,6.230166912078857
+house,house,5.4910118103027346
+how,how,5.92963171005249
 hug,hug,NA
 hungry,hungry,NA
 hurry,hurry,NA
-hurt,hurt (description),6.282672882080078
-i,i,5.399647792180379
-in,in,3.3156338214874266
-inside,inside,5.740646123886108
-it,it,3.2449681869772977
+hurt,hurt (description),6.647758960723877
+i,i,5.593088308970134
+in,in,3.6782145818074543
+inside,inside,5.642972946166992
+it,it,3.611276620771827
 jacket,jacket,NA
 jeans,jeans,NA
 juice,juice,NA
@@ -188,49 +188,49 @@ lamb,lamb,NA
 lamp,lamp,NA
 later,later,NA
 leg,leg,NA
-light,light (object),6.11827278137207
+light,light (object),6.449483394622803
 lion,lion,NA
-little,little (description),5.2528974669320245
-look,look,5.971122407913208
+little,little (description),5.380108296871185
+look,look,5.950784365336101
 love,love,NA
 lunch,lunch,NA
 man,man,NA
-me,me,6.44010329246521
+me,me,6.0639121532440186
 meat,meat,NA
 medicine,medicine,NA
 meow,meow,NA
 milk,milk,NA
-mine,mine,13.0488862991333
+mine,mine,6.06062421798706
 mommy,mommy,NA
 money,money,NA
 monkey,monkey,NA
 moo,moo,NA
 moon,moon,NA
-more,more,6.520171642303467
+more,more,6.02139687538147
 morning,morning,NA
 motorcycle,motorcycle,NA
 mouse,mouse,NA
-mouth,mouth,5.782063245773315
-my,my,6.2737510204315186
+mouth,mouth,5.92153525352478
+my,my,6.142347574234009
 nap,nap,NA
 naughty,naughty,NA
 necklace,necklace,NA
-nice,nice,5.516696512699127
-night,night,11.511850833892822
-no,no,4.678095002969106
+nice,nice,5.4021531740824384
+night,night,11.644829750061035
+no,no,4.920541378167959
 none,none,NA
-nose,nose,5.710575103759766
-not,not,4.998541037241618
-now,now,9.58057975769043
-off,off,6.189842700958252
+nose,nose,5.696991761525472
+not,not,4.914200862248738
+now,now,6.596017837524414
+off,off,5.7477991580963135
 old,old,NA
-on,on,4.803995418548584
+on,on,4.7304816246032715
 open,open (action),NA
 orange,orange (food),NA
 other,other,NA
 ouch,ouch,NA
-out,out,4.9156782031059265
-outside,outside,6.63922643661499
+out,out,5.209097325801849
+outside,outside,6.650238990783691
 oven,oven,NA
 owl,owl,NA
 pajamas,pajamas,NA
@@ -244,16 +244,16 @@ peekaboo,peekaboo,NA
 pen,pen,NA
 penguin,penguin,NA
 penny,penny,NA
-people,people,6.517609596252441
-person,person,9.309131622314453
-picture,picture,5.359260559082031
-pig,pig,6.853540897369385
+people,people,6.730996608734131
+person,person,6.5464301109313965
+picture,picture,5.118973936353411
+pig,pig,6.042306900024414
 pillow,pillow,NA
 pizza,pizza,NA
 plant,plant,NA
 plate,plate,NA
-play,play,6.978351211547851
-please,please,6.462350010871887
+play,play,6.585147142410278
+please,please,6.536818742752075
 pony,pony,NA
 pool,pool,NA
 potty,potty,NA
@@ -262,45 +262,45 @@ pull,pull,NA
 puppy,puppy,NA
 purse,purse,NA
 push,push,NA
-put,put,4.533986692075376
+put,put,4.711681860464591
 radio,radio,NA
 rain,rain,NA
-raisin,raisin,NA
-read,read,5.980448246002197
-red,red,5.641316095987956
+raisin,raisin,6.530447959899902
+read,read,6.071503162384033
+red,red,5.6978081067403155
 refrigerator,refrigerator,NA
-ride,ride,5.194535255432129
+ride,ride,5.275022387504578
 rock,rock (object),NA
 run,run,NA
 same,same,NA
-say,say,7.010552883148193
+say,say,6.845338582992554
 scared,scared,NA
 school,school,NA
 scissors,scissors,NA
-see,see,4.912025656018939
+see,see,5.117669729086069
 sheep,sheep,NA
 shh/shush/hush,shh,NA
 shirt,shirt,NA
 shoe,shoe,NA
 shorts,shorts,NA
 shovel,shovel,NA
-show,show,6.818151950836182
+show,show,6.668871879577637
 sick,sick,NA
-sing,sing,NA
+sing,sing,12.673925399780273
 sink,sink,NA
 sister,sister,NA
 sky,sky,NA
 sleep,sleep,NA
-sleepy,sleepy,6.264781475067139
+sleepy,sleepy,6.638282775878906
 slide,slide (object),NA
 smile,smile,NA
-snow,snow,5.732331275939941
+snow,snow,5.402176380157471
 soap,soap,NA
 sock,sock,NA
-soft,soft,5.923730850219727
-some,some,4.734557151794434
+soft,soft,6.153531074523926
+some,some,4.826010159083775
 splash,splash,NA
-spoon,spoon,5.893764019012451
+spoon,spoon,5.87187933921814
 squirrel,squirrel,NA
 stairs,stairs,NA
 star,star,NA
@@ -314,29 +314,29 @@ swim,swim,NA
 swing,swing (action),NA
 swing,swing (object),NA
 table,table,NA
-take,take,5.2353683199201315
+take,take,5.130859238760812
 teacher,teacher,NA
 teddybear,teddybear,NA
 telephone,telephone,NA
-that,that,2.8369331126119577
-there,there,3.549862012863159
+that,that,3.471021193045157
+there,there,4.117411851882935
 thirsty,thirsty,NA
-this,this,4.7931414084001025
-throw,throw,5.085559436253139
+this,this,4.863860981804984
+throw,throw,5.1446059090750555
 tickle,tickle,NA
 tiger,tiger,NA
 tired,tired,NA
 toast,toast,NA
 today,today,NA
 toe,toe,NA
-tomorrow,tomorrow,9.698900858561197
+tomorrow,tomorrow,10.222662925720215
 tongue,tongue,NA
 tonight,tonight,NA
 tooth,tooth,NA
 toothbrush,toothbrush,NA
 touch,touch,NA
 towel,towel,NA
-toy,toy (object),7.2386555671691895
+toy,toy (object),5.972448825836182
 train,train,NA
 trash,trash,NA
 tree,tree,NA
@@ -347,30 +347,30 @@ turtle,turtle,NA
 tv,tv,NA
 uncle,uncle,NA
 under,under,NA
-up,up,4.051850509643555
+up,up,4.187288689613342
 vacuum,vacuum,NA
 vroom,vroom,NA
 wait,wait,NA
 walk,walk,NA
-wash,wash,6.788022994995117
+wash,wash,6.628836631774902
 watch,watch (action),NA
 watch,watch (object),NA
 water,water (beverage),NA
 water,water (not beverage),NA
 wet,wet (description),NA
-what,what,6.031495940300726
-when,when (question),6.495489120483398
-where,where (question),12.850573539733887
-who,who,7.875140190124512
-why,why,5.686659097671509
-window,window,5.156928886066783
-wipe,wipe,5.85250186920166
-work,work (place),6.5093560218811035
+what,what,6.0287216156721115
+when,when (question),6.0978007316589355
+where,where (question),12.327765464782715
+who,who,12.694087982177734
+why,why,5.642869234085083
+window,window,5.0202319405295635
+wipe,wipe,6.455467939376831
+work,work (place),6.571086406707764
 write,write,NA
 backyard,yard,NA
-yes,yes,7.886909484863281
-you,you,3.79386212609031
-your,your,3.9536883580057243
+yes,yes,12.186470031738281
+you,you,4.047709508375688
+your,your,4.141759257567556
 yucky,yucky,NA
 zipper,zipper,NA
 zoo,zoo,NA
