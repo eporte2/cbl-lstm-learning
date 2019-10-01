@@ -174,7 +174,7 @@ run_crossv <- function(split_data){
     errs_<- map2(sep_models_kfold[[name]], 
                  sep_models_kfold$test, error_analysis) %>% 
       reduce(rbind) 
-    model_names = c("mse_", "rmse_", "rsquare_", "mae_")
+    model_names = c("mse_", "rmse_", "mae_")
     avgs = model_names %>% map(~mean(errs_[[.]]))
     result <- data.frame(avgs)
     colnames(result) = model_names
