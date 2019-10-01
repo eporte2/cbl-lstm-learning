@@ -13,8 +13,8 @@ library(tools)
 library(tidyverse)
 library(glue)
 library(broom)
-library(broom.mixed)
-library(langcog)
+#library(broom.mixed)
+#library(langcog)
 library(stringr)
 library(lme4)
 library(modelr)
@@ -87,6 +87,7 @@ my_get_prod_results <- function(result_dir){
 
 result_dir = "../../data/results/aoa_surprisals/"
 model_surprisals = my_get_prod_results(result_dir)
+model_surprisals = model_surprisals %>% filter(child_name!="Thomas")
 ```
 
 Combine avg surprisal results with other predictors . Impute and scale data for models.
@@ -182,7 +183,8 @@ freq_surp = ~ (age | item) + age * frequency + age * avg_surprisal + lexical_cat
 
 freq_MLU_surp = ~ (age | item) + age * frequency + age * MLU + age * avg_surprisal + lexical_category * frequency + lexical_category * MLU + lexical_category * avg_surprisal
 
-formulae <- formulas(~prop, full_set, freq_only, freq_MLU, full_surp, freq_surp, freq_MLU_surp)
+#formulae <- formulas(~prop, full_set, freq_only, freq_MLU, full_surp, freq_surp, freq_MLU_surp)
+formulae <- formulas(~prop, full_surp, freq_surp, freq_MLU_surp)
 ```
 
 
@@ -203,7 +205,7 @@ error_analysis <- function(model, data){
   results = tibble(
     mse_ = mse(model, data),
     rmse_ = rmse(model, data),
-    rsquare_ = rsquare(model, data),
+    #rsquare_ = rsquare(model, data),
     mae_ = mae(model, data)
     #  probs =  c(0.05, 0.25, 0.5, 0.75, 0.95),
     #  qae_ = qae(model, data)
@@ -289,4 +291,24 @@ cv_errs_data <- group_data %>%
 save(cv_errs_data, file = "../../data/aoa_predictors/cv_errs_data.RData")
 
 load("../../data/aoa_predictors/cv_errs_data.RData")
+```
+
+```{r norm}
+
+pred_data <- model_surprisals %>% 
+  select(uni_lemma, avg_surprisal, child_name) %>% 
+  left_join(model_data) %>% 
+  group_by(child_name)
+
+pred_data_imputed <- group_data %>% 
+  unnest()
+
+glimpse(pred_data)
+
+
+predictors <- c("avg_surprisal","frequency", "MLU", "final_frequency", "solo_frequency", "num_phons", "concreteness", "valence", "arousal", "babiness")
+
+hist(pred_data$avg_surprisal)
+hist(pred_data_imputed$avg_surprisal)
+
 ```

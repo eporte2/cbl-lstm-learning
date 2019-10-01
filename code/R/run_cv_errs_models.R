@@ -2,8 +2,8 @@ library(tools)
 library(tidyverse)
 library(glue)
 library(broom)
-library(broom.mixed)
-library(langcog)
+#library(broom.mixed)
+#library(langcog)
 library(stringr)
 library(lme4)
 library(modelr)
@@ -33,6 +33,7 @@ my_get_prod_results <- function(result_dir){
 
 result_dir = "../../data/results/aoa_surprisals/"
 model_surprisals = my_get_prod_results(result_dir)
+model_surprisals = model_surprisals %>% filter(child_name!="Thomas")
 
 surp_model_data <- model_surprisals %>% 
   select(uni_lemma, avg_surprisal, child_name) %>% 
@@ -118,7 +119,8 @@ freq_surp = ~ (age | item) + age * frequency + age * avg_surprisal + lexical_cat
 
 freq_MLU_surp = ~ (age | item) + age * frequency + age * MLU + age * avg_surprisal + lexical_category * frequency + lexical_category * MLU + lexical_category * avg_surprisal
 
-formulae <- formulas(~prop, full_set, freq_only, freq_MLU, full_surp, freq_surp, freq_MLU_surp)
+#formulae <- formulas(~prop, full_set, freq_only, freq_MLU, full_surp, freq_surp, freq_MLU_surp)
+formulae <- formulas(~prop, full_surp, freq_surp, freq_MLU_surp)
 
 fit_models <- function(data, formulae, contrasts = NULL) {
   print("run model")
@@ -130,7 +132,7 @@ error_analysis <- function(model, data){
   results = tibble(
     mse_ = mse(model, data),
     rmse_ = rmse(model, data),
-    rsquare_ = rsquare(model, data),
+    #rsquare_ = rsquare(model, data),
     mae_ = mae(model, data)
     #  probs =  c(0.05, 0.25, 0.5, 0.75, 0.95),
     #  qae_ = qae(model, data)
@@ -147,21 +149,21 @@ run_crossv <- function(split_data){
                gsub(" ", "_", group, fixed = TRUE),
                "_cv_models_data.RData", sep="")
   
-  kfold5_data <- crossv_kfold(split_data, k=2)
+  kfold5_data <- crossv_kfold(split_data, k=5)
   models_kfold <- kfold5_data %>% 
     mutate(models = train %>% map( ~ fit_models(., formulae)))
   sep_models_kfold <- models_kfold %>% 
-    mutate(full_set = models_kfold$models %>% map(~ .$"full_set"),
-           freq_only = models_kfold$models %>% map(~ .$"freq_only"),
-           freq_MLU = models_kfold$models %>% map(~ .$"freq_MLU"),
+    mutate(#full_set = models_kfold$models %>% map(~ .$"full_set"),
+           #freq_only = models_kfold$models %>% map(~ .$"freq_only"),
+           #freq_MLU = models_kfold$models %>% map(~ .$"freq_MLU"),
            full_surp = models_kfold$models %>% map(~ .$"full_surp"),
            freq_surp = models_kfold$models %>% map(~ .$"freq_surp"),
            freq_MLU_surp = models_kfold$models %>% map(~ .$"freq_MLU_surp")
     ) %>% 
     select(train, test, .id, 
-           full_set, 
-           freq_only, 
-           freq_MLU, 
+           #full_set, 
+           #freq_only, 
+           #freq_MLU, 
            full_surp, 
            freq_surp, 
            freq_MLU_surp)
@@ -179,7 +181,8 @@ run_crossv <- function(split_data){
     result <- result %>% mutate(model= name)
   }
   
-  model_names = c("full_set", "freq_only", "freq_MLU", "full_surp", "freq_surp", "freq_MLU_surp")
+  #model_names = c("full_set", "freq_only", "freq_MLU", "full_surp", "freq_surp", "freq_MLU_surp")
+  model_names = c("full_surp", "freq_surp", "freq_MLU_surp")
   errs_<- map(model_names, get_avg_errs) %>% reduce(rbind)
   
   results <- errs_ %>% 
