@@ -1,10 +1,11 @@
 library(tools)
-library(tidyverse)
+#library(Hmisc)
 library(glue)
 library(broom)
 #library(broom.mixed)
 #library(langcog)
 library(stringr)
+library(tidyverse)
 library(lme4)
 library(modelr)
 library(purrr)
@@ -33,7 +34,7 @@ my_get_prod_results <- function(result_dir){
 
 result_dir = "../../data/results/aoa_surprisals/"
 model_surprisals = my_get_prod_results(result_dir)
-model_surprisals = model_surprisals %>% filter(child_name!="Thomas")
+model_surprisals = model_surprisals %>% filter(child_name!="Thomas" && child_name!="Adam")
 
 surp_model_data <- model_surprisals %>% 
   select(uni_lemma, avg_surprisal, child_name) %>% 
@@ -195,22 +196,30 @@ run_crossv <- function(split_data){
   return(results)
 }
 
-group_data <- uni_model_data %>%
-  mutate(group = paste(child_name, measure),
-         lexical_category = lexical_category %>% fct_relevel("other")) %>%
-  select(child_name, measure, group, lexical_category, item = uni_lemma,
-         prop,total, age, !!predictors) %>%
-  mutate(item = as.factor(item)) %>% 
-  group_by(group) %>%
-  nest()
+run_cv_by_childname <- function(child){
+  group_data <- uni_model_data %>%
+    filter(child_name==child) %>% 
+    mutate(group = paste(child_name, measure),
+           lexical_category = lexical_category %>% fct_relevel("other")) %>%
+    select(child_name, measure, group, lexical_category, item = uni_lemma,
+           prop,total, age, !!predictors) %>%
+    mutate(item = as.factor(item)) %>% 
+    group_by(group) %>%
+    nest()
+  
+  cv_errs_data <- group_data %>% 
+    unnest() %>%
+    group_by(group) %>% 
+    split( .$group) %>% 
+    map(~ run_crossv(split_data = .)) %>% 
+    reduce(rbind)
+  
+  name = paste("../../data/aoa_predictors/",
+               gsub(" ", "_", child, fixed = TRUE),
+               "_cv_errs_data.RData", sep="")
+  
+  
+  save(cv_errs_data, file = name)
+}
 
-
-cv_errs_data <- group_data %>% 
-  unnest() %>%
-  group_by(group) %>% 
-  split( .$group) %>% 
-  map(~ run_crossv(split_data = .)) %>% 
-  reduce(rbind)
-
-
-save(cv_errs_data, file = "../../data/aoa_predictors/cv_errs_data.RData")
+uni_model_data$child_name %>% unique() %>% map(run_cv_by_childname)
