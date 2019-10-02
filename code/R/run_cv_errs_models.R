@@ -37,6 +37,7 @@ model_surprisals = model_surprisals %>% filter(child_name!="Thomas")
 
 surp_model_data <- model_surprisals %>% 
   select(uni_lemma, avg_surprisal, child_name) %>% 
+  mutate(uni_lemma = as.character(uni_lemma)) %>% 
   left_join(model_data) %>% 
   group_by(child_name) %>%
   # mutate_at(vars(!!predictors), funs(as.numeric(scale(.)))) %>%
