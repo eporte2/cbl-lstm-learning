@@ -94,6 +94,7 @@ Combine avg surprisal results with other predictors . Impute and scale data for 
 ```{r uni_model_data}
 surp_model_data <- model_surprisals %>% 
   select(uni_lemma, avg_surprisal, child_name) %>% 
+  mutate(uni_lemma = as.character(uni_lemma)) %>% 
   left_join(model_data) %>% 
   group_by(child_name) %>%
   # mutate_at(vars(!!predictors), funs(as.numeric(scale(.)))) %>%
@@ -295,20 +296,126 @@ load("../../data/aoa_predictors/cv_errs_data.RData")
 
 ```{r norm}
 
-pred_data <- model_surprisals %>% 
-  select(uni_lemma, avg_surprisal, child_name) %>% 
-  left_join(model_data) %>% 
-  group_by(child_name)
+default <- NULL
 
-pred_data_imputed <- group_data %>% 
-  unnest()
+fit_models <- function(data, formulae, contrasts = NULL) {
+  models <- NULL
+  print("run model")
+  try(models <- fit_with(data, glmer, formulae, family = "binomial",
+           weights = data$total, contrasts = contrasts))
+  return(models)
+}
 
-glimpse(pred_data)
 
 
-predictors <- c("avg_surprisal","frequency", "MLU", "final_frequency", "solo_frequency", "num_phons", "concreteness", "valence", "arousal", "babiness")
+error_analysis <- function(model, data){
+  results = tibble(
+    mse_ = mse(model, data),
+    rmse_ = rmse(model, data),
+    #rsquare_ = rsquare(model, data),
+    mae_ = mae(model, data)
+    #  probs =  c(0.05, 0.25, 0.5, 0.75, 0.95),
+    #  qae_ = qae(model, data)
+    #  mape_ = mape(model, data),
+    #  rsae_ = rsae(model, data)
+  )
+  return(results)
+}
 
-hist(pred_data$avg_surprisal)
-hist(pred_data_imputed$avg_surprisal)
+
+
+run_crossv <- function(split_data){
+  group = unique(split_data$group)
+  print(paste("running models for", group))
+  name = paste("../../data/aoa_predictors/",
+               gsub(" ", "_", group, fixed = TRUE),
+               "_cv_models_data.RData", sep="")
+  
+  kfold5_data <- crossv_kfold(split_data, k=2)
+  models_kfold_try<- kfold5_data %>% 
+    mutate(models = train %>% map( ~ fit_models(., formulae)))
+  #Remove failed models
+  models_kfold <- models_kfold_try %>% filter(is.null(models))
+  sep_models_kfold <- models_kfold %>% 
+    mutate(#full_set = models_kfold$models %>% map(~ .$"full_set"),
+       #freq_only = models_kfold$models %>% map(~ .$"freq_only"),
+       #freq_MLU = models_kfold$models %>% map(~ .$"freq_MLU"),
+       full_surp = models_kfold$models %>% map(~  .$"full_surp"),
+       freq_surp = models_kfold$models %>% map(~ .$"freq_surp"),
+       freq_MLU_surp = models_kfold$models %>% map(~ .$"freq_MLU_surp")
+  ) %>% 
+  select(train, test, .id, 
+         #full_set, 
+         #freq_only, 
+         #freq_MLU, 
+         full_surp, 
+         freq_surp, 
+         freq_MLU_surp)
+  
+  save(sep_models_kfold, file = name)
+  
+  get_avg_errs <- function(name){
+  errs_<- map2(sep_models_kfold[[name]], 
+             sep_models_kfold$test, error_analysis) %>% 
+  reduce(rbind) 
+  model_names = c("mse_", "rmse_", "mae_")
+  avgs = model_names %>% map(~mean(errs_[[.]]))
+  result <- data.frame(avgs)
+  colnames(result) = model_names
+  result <- result %>% mutate(model= name)
+  }
+  
+  if(nrow(sep_models_kfold)>0){
+    #model_names = c("full_set", "freq_only", "freq_MLU", "full_surp", "freq_surp", "freq_MLU_surp")
+    model_names = c("full_surp", "freq_surp", "freq_MLU_surp")
+    errs_<- map(model_names, get_avg_errs) %>% reduce(rbind)
+  }else{
+    errs_ <- tibble(
+     mse_ = NA,
+    rmse_ = NA,
+    mae_ = NA,
+    model = NA
+    )
+  }
+  
+  
+  results <- errs_ %>% 
+    mutate(group = group,
+           child_name = unique(split_data$child_name),
+           measure = unique(split_data$measure),
+           nfolds = nrow(models_kfold)
+    )
+  
+  return(results)
+}
+
+run_cv_by_childname <- function(child){
+  group_data <- uni_model_data %>%
+    filter(child_name==child) %>% 
+    mutate(group = paste(child_name, measure),
+           lexical_category = lexical_category %>% fct_relevel("other")) %>%
+    select(child_name, measure, group, lexical_category, item = uni_lemma,
+           prop,total, age, !!predictors) %>%
+    mutate(item = as.factor(item)) %>% 
+    group_by(group) %>%
+    nest()
+  
+  cv_errs_data <- group_data %>% 
+    unnest() %>%
+    group_by(group) %>% 
+    split( .$group) %>% 
+    map(~ run_crossv(split_data = .)) %>% 
+    reduce(rbind)
+  
+  name = paste("../../data/aoa_predictors/",
+               gsub(" ", "_", child, fixed = TRUE),
+               "_cv_errs_data.RData", sep="")
+  
+  
+  save(cv_errs_data, file = name)
+}
+
+uni_model_data$child_name %>% unique() %>% map(run_cv_by_childname)
+
 
 ```

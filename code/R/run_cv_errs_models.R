@@ -125,9 +125,11 @@ freq_MLU_surp = ~ (age | item) + age * frequency + age * MLU + age * avg_surpris
 formulae <- formulas(~prop, full_surp, freq_surp, freq_MLU_surp)
 
 fit_models <- function(data, formulae, contrasts = NULL) {
+  models <- NULL
   print("run model")
-  fit_with(data, glmer, formulae, family = "binomial",
-           weights = data$total, contrasts = contrasts) 
+  try(models <- fit_with(data, glmer, formulae, family = "binomial",
+                         weights = data$total, contrasts = contrasts))
+  return(models)
 }
 
 error_analysis <- function(model, data){
@@ -152,8 +154,10 @@ run_crossv <- function(split_data){
                "_cv_models_data.RData", sep="")
   
   kfold5_data <- crossv_kfold(split_data, k=5)
-  models_kfold <- kfold5_data %>% 
+  models_kfold_try<- kfold5_data %>% 
     mutate(models = train %>% map( ~ fit_models(., formulae)))
+  #Remove failed models
+  models_kfold <- models_kfold_try %>% filter(is.null(models))
   sep_models_kfold <- models_kfold %>% 
     mutate(#full_set = models_kfold$models %>% map(~ .$"full_set"),
            #freq_only = models_kfold$models %>% map(~ .$"freq_only"),
@@ -183,9 +187,18 @@ run_crossv <- function(split_data){
     result <- result %>% mutate(model= name)
   }
   
-  #model_names = c("full_set", "freq_only", "freq_MLU", "full_surp", "freq_surp", "freq_MLU_surp")
-  model_names = c("full_surp", "freq_surp", "freq_MLU_surp")
-  errs_<- map(model_names, get_avg_errs) %>% reduce(rbind)
+  if(nrow(sep_models_kfold)>0){
+    #model_names = c("full_set", "freq_only", "freq_MLU", "full_surp", "freq_surp", "freq_MLU_surp")
+    model_names = c("full_surp", "freq_surp", "freq_MLU_surp")
+    errs_<- map(model_names, get_avg_errs) %>% reduce(rbind)
+  }else{
+    errs_ <- tibble(
+      mse_ = NA,
+      rmse_ = NA,
+      mae_ = NA,
+      model = NA
+    )
+  }
   
   results <- errs_ %>% 
     mutate(group = group,
