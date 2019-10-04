@@ -157,7 +157,7 @@ run_crossv <- function(split_data){
   models_kfold_try<- kfold5_data %>% 
     mutate(models = train %>% map( ~ fit_models(., formulae)))
   #Remove failed models
-  models_kfold <- models_kfold_try %>% filter(is.null(models))
+  models_kfold <- models_kfold_try %>% filter(!is.null(models))
   sep_models_kfold <- models_kfold %>% 
     mutate(#full_set = models_kfold$models %>% map(~ .$"full_set"),
            #freq_only = models_kfold$models %>% map(~ .$"freq_only"),
