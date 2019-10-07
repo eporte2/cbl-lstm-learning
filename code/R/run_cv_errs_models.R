@@ -125,7 +125,7 @@ freq_MLU_surp = ~ (age | item) + age * frequency + age * MLU + age * avg_surpris
 formulae <- formulas(~prop, full_surp, freq_surp, freq_MLU_surp)
 
 fit_models <- function(data, formulae, contrasts = NULL) {
-  models <- NULL
+  models <- "no model"
   print("run model")
   try(models <- fit_with(data, glmer, formulae, family = "binomial",
                          weights = data$total, contrasts = contrasts))
@@ -157,7 +157,7 @@ run_crossv <- function(split_data){
   models_kfold_try<- kfold5_data %>% 
     mutate(models = train %>% map( ~ fit_models(., formulae)))
   #Remove failed models
-  models_kfold <- models_kfold_try %>% filter(!is.null(models))
+  models_kfold <- models_kfold_try %>% filter(models[1]!="no model")
   sep_models_kfold <- models_kfold %>% 
     mutate(#full_set = models_kfold$models %>% map(~ .$"full_set"),
            #freq_only = models_kfold$models %>% map(~ .$"freq_only"),

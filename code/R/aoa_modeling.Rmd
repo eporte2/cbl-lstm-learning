@@ -295,18 +295,19 @@ load("../../data/aoa_predictors/cv_errs_data.RData")
 ```
 
 ```{r norm}
+uni_model_data_small <- uni_model_data %>% filter(uni_lemma %in% df.uni_lemma$uni_lemma[1:50]) %>% 
+  filter(child_name == "Abe")
 
-default <- NULL
+
+formulae <- formulas(~prop, full_surp, freq_surp, freq_MLU_surp)
 
 fit_models <- function(data, formulae, contrasts = NULL) {
-  models <- NULL
+  models <- "no model"
   print("run model")
   try(models <- fit_with(data, glmer, formulae, family = "binomial",
-           weights = data$total, contrasts = contrasts))
+                         weights = data$total, contrasts = contrasts))
   return(models)
 }
-
-
 
 error_analysis <- function(model, data){
   results = tibble(
@@ -322,8 +323,6 @@ error_analysis <- function(model, data){
   return(results)
 }
 
-
-
 run_crossv <- function(split_data){
   group = unique(split_data$group)
   print(paste("running models for", group))
@@ -335,34 +334,34 @@ run_crossv <- function(split_data){
   models_kfold_try<- kfold5_data %>% 
     mutate(models = train %>% map( ~ fit_models(., formulae)))
   #Remove failed models
-  models_kfold <- models_kfold_try %>% filter(is.null(models))
+  models_kfold <- models_kfold_try %>% filter(models[1]!="no model")
   sep_models_kfold <- models_kfold %>% 
     mutate(#full_set = models_kfold$models %>% map(~ .$"full_set"),
-       #freq_only = models_kfold$models %>% map(~ .$"freq_only"),
-       #freq_MLU = models_kfold$models %>% map(~ .$"freq_MLU"),
-       full_surp = models_kfold$models %>% map(~  .$"full_surp"),
-       freq_surp = models_kfold$models %>% map(~ .$"freq_surp"),
-       freq_MLU_surp = models_kfold$models %>% map(~ .$"freq_MLU_surp")
-  ) %>% 
-  select(train, test, .id, 
-         #full_set, 
-         #freq_only, 
-         #freq_MLU, 
-         full_surp, 
-         freq_surp, 
-         freq_MLU_surp)
+           #freq_only = models_kfold$models %>% map(~ .$"freq_only"),
+           #freq_MLU = models_kfold$models %>% map(~ .$"freq_MLU"),
+           full_surp = models_kfold$models %>% map(~ .$"full_surp"),
+           freq_surp = models_kfold$models %>% map(~ .$"freq_surp"),
+           freq_MLU_surp = models_kfold$models %>% map(~ .$"freq_MLU_surp")
+    ) %>% 
+    select(train, test, .id, 
+           #full_set, 
+           #freq_only, 
+           #freq_MLU, 
+           full_surp, 
+           freq_surp, 
+           freq_MLU_surp)
   
   save(sep_models_kfold, file = name)
   
   get_avg_errs <- function(name){
-  errs_<- map2(sep_models_kfold[[name]], 
-             sep_models_kfold$test, error_analysis) %>% 
-  reduce(rbind) 
-  model_names = c("mse_", "rmse_", "mae_")
-  avgs = model_names %>% map(~mean(errs_[[.]]))
-  result <- data.frame(avgs)
-  colnames(result) = model_names
-  result <- result %>% mutate(model= name)
+    errs_<- map2(sep_models_kfold[[name]], 
+                 sep_models_kfold$test, error_analysis) %>% 
+      reduce(rbind) 
+    model_names = c("mse_", "rmse_", "mae_")
+    avgs = model_names %>% map(~mean(errs_[[.]]))
+    result <- data.frame(avgs)
+    colnames(result) = model_names
+    result <- result %>% mutate(model= name)
   }
   
   if(nrow(sep_models_kfold)>0){
@@ -371,26 +370,24 @@ run_crossv <- function(split_data){
     errs_<- map(model_names, get_avg_errs) %>% reduce(rbind)
   }else{
     errs_ <- tibble(
-     mse_ = NA,
-    rmse_ = NA,
-    mae_ = NA,
-    model = NA
+      mse_ = NA,
+      rmse_ = NA,
+      mae_ = NA,
+      model = NA
     )
   }
-  
   
   results <- errs_ %>% 
     mutate(group = group,
            child_name = unique(split_data$child_name),
-           measure = unique(split_data$measure),
-           nfolds = nrow(models_kfold)
+           measure = unique(split_data$measure)
     )
   
   return(results)
 }
 
 run_cv_by_childname <- function(child){
-  group_data <- uni_model_data %>%
+  group_data <- uni_model_data_small %>%
     filter(child_name==child) %>% 
     mutate(group = paste(child_name, measure),
            lexical_category = lexical_category %>% fct_relevel("other")) %>%
@@ -415,7 +412,5 @@ run_cv_by_childname <- function(child){
   save(cv_errs_data, file = name)
 }
 
-uni_model_data$child_name %>% unique() %>% map(run_cv_by_childname)
-
-
+uni_model_data_small$child_name %>% unique() %>% map(run_cv_by_childname)
 ```
