@@ -298,6 +298,8 @@ load("../../data/aoa_predictors/cv_errs_data.RData")
 uni_model_data_small <- uni_model_data %>% filter(uni_lemma %in% df.uni_lemma$uni_lemma[1:50]) %>% 
   filter(child_name == "Abe")
 
+split_data <- uni_model_data_small
+
 
 formulae <- formulas(~prop, full_surp, freq_surp, freq_MLU_surp)
 
@@ -334,7 +336,7 @@ run_crossv <- function(split_data){
   models_kfold_try<- kfold5_data %>% 
     mutate(models = train %>% map( ~ fit_models(., formulae)))
   #Remove failed models
-  models_kfold <- models_kfold_try %>% filter(models[1]!="no model")
+  models_kfold <- models_kfold_try %>% filter(models!="no model")
   sep_models_kfold <- models_kfold %>% 
     mutate(#full_set = models_kfold$models %>% map(~ .$"full_set"),
            #freq_only = models_kfold$models %>% map(~ .$"freq_only"),
