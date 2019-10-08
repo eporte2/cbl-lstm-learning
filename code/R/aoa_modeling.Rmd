@@ -380,7 +380,8 @@ run_crossv <- function(split_data){
   results <- errs_ %>% 
     mutate(group = group,
            child_name = unique(split_data$child_name),
-           measure = unique(split_data$measure)
+           measure = unique(split_data$measure),
+           kfolds = nrow(sep_models_kfold)
     )
   
   return(results)
