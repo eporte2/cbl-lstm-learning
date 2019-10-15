@@ -472,24 +472,24 @@ ggplot(NULL,aes(x=utterance_length)) +
 ```{r final_plot}
 #Only take sentences with 16 words or less
 df.cbl_greedy = df.cbl_0.4test_bylang %>%
-  filter(utterance_length <= 16) %>% 
+  filter(utterance_length <= 10) %>% 
   select(utterance_length,avg_production_score,avg_nb_utterances) %>% 
   mutate(model = "CBLs")
 
 df.lstm_greedy = df.lstm_prod_results_bylang %>%
-  filter(utterance_length <= 16) %>% 
+  filter(utterance_length <= 10) %>% 
   select(utterance_length,avg_production_score,avg_nb_utterances) %>% 
   mutate(model = "LSTMs")
 
 df.greedy = rbind(df.lstm_greedy, df.cbl_greedy) %>% mutate(encoder= "Greedy decoder")
 
 df.cbl_beam = df.cbl_beam5_bylang %>%
-  filter(utterance_length <= 16) %>% 
+  filter(utterance_length <= 10) %>% 
   select(utterance_length,avg_production_score,avg_nb_utterances) %>% 
   mutate(model = "CBLs")
 
 df.lstm_beam = df.lstm_beam5_bylang %>%
-  filter(utterance_length <= 16) %>% 
+  filter(utterance_length <= 10) %>% 
   select(utterance_length,avg_production_score,avg_nb_utterances) %>% 
   mutate(model = "LSTMs")
 
@@ -507,7 +507,7 @@ df.chance = df.lstm_plot2 %>%
 
 #overall_score_16 = sum(df.plot2$total_avg_produced)/sum(df.plot2$total_nb_utterances)
 
-ggplot(NULL,aes(x=utterance_length)) +
+p= ggplot(NULL,aes(x=utterance_length)) +
   geom_line(data= df.all_models, aes(y=avg_production_score, color = model), size= 1) +
   geom_point(data= df.all_models, aes(y=avg_production_score, color = model, size = avg_nb_utterances), shape=19, alpha=0.8) +
   facet_grid(. ~ encoder)+
@@ -516,12 +516,13 @@ ggplot(NULL,aes(x=utterance_length)) +
   ylab("Production score") +
   xlab("Utterance length (number of tokens)") +
   scale_y_continuous(limits = c(0.0, 1.0))+
-  scale_x_continuous(breaks = c(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16))+
+  scale_x_continuous(breaks = c(2,3,4,5,6,7,8,9,10))+
   ggtitle("Mean model performance by utterance length")+
-  theme(text=element_text(size=13,  family="Times New Roman"), legend.title = element_text( size = 12), legend.position = c(0.9, 0.6),  plot.title = element_text(hjust = 0.5))+
+  theme(text=element_text(size=16,  family="Times New Roman"), legend.title = element_text( size = 14), legend.position = c(0.9, 0.6),  plot.title = element_text(hjust = 0.5))+
   labs(color = "Models", size = "Mean test utterance count")
 
 
+ggsave("bylength_res_poster.png", plot = p, width = 11, height = 5.5, units="in", dpi= 300)
 ```
 
 ## Get confidence intervals
@@ -600,7 +601,7 @@ ggplot(df.all_bysize, aes(x=log(train_tokens), y=production_score, group=model))
 
 ## Plot overall score
 ```{r overal_comparison}
-ggplot(data = df.all_bysize, 
+p = ggplot(data = df.all_bysize, 
             mapping = aes(x = model, y = production_score)) +
   geom_line(aes(group = child_name), alpha = 0.5, color="dark blue") +
   geom_point(alpha = 0.5, color="dark blue") +
@@ -612,8 +613,9 @@ ggplot(data = df.all_bysize,
   facet_wrap(vars(encoder)) +
   ylab("Production score") +
   ggtitle("Production score by model")+
-  theme(text=element_text(size=13,  family="Times New Roman"), legend.title = element_text( size = 12), legend.position = c(0.9, 0.6),  plot.title = element_text(hjust = 0.5))
+  theme(text=element_text(size=16,  family="Times New Roman"), legend.title = element_text( size = 14), legend.position = c(0.9, 0.6),  plot.title = element_text(hjust = 0.5))
 
+ggsave("overall_res_poster.png", plot = p, width = 9, height = 5.5, units="in", dpi= 300)
 ```
 
 

@@ -417,3 +417,25 @@ run_cv_by_childname <- function(child){
 
 uni_model_data_small$child_name %>% unique() %>% map(run_cv_by_childname)
 ```
+
+```{r results}
+
+get_data <- function(filename){
+  load(filename)
+  res <- data.frame(cv_errs_data)
+  return(res)
+}
+
+my_get_aoa_err_results <- function(result_dir){
+  files = list.files(path=result_dir, pattern="*_cv_errs_data.RData", full.names=TRUE, recursive=FALSE)
+  df.aoa_err_results = files %>% map(get_data) %>% reduce(rbind)
+  return(df.aoa_err_results)
+}
+
+result_dir = "../../data/aoa_predictors/"
+model_errs_all = my_get_aoa_err_results(result_dir)
+model_surprisals = model_surprisals %>% filter(child_name!="Thomas")
+
+
+
+```
