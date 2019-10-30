@@ -34,7 +34,7 @@ my_get_prod_results <- function(result_dir){
 
 result_dir = "../../data/results/aoa_surprisals/"
 model_surprisals = my_get_prod_results(result_dir)
-model_surprisals = model_surprisals %>% filter(!(child_name %in% c("Thomas","Adam")))
+model_surprisals = model_surprisals %>% filter(!(child_name %in% c("Thomas")))
 
 surp_model_data <- model_surprisals %>% 
   select(uni_lemma, avg_surprisal, child_name) %>% 
