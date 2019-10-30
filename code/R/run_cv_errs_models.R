@@ -121,8 +121,8 @@ freq_surp = ~ (age | item) + age * frequency + age * avg_surprisal + lexical_cat
 
 freq_MLU_surp = ~ (age | item) + age * frequency + age * MLU + age * avg_surprisal + lexical_category * frequency + lexical_category * MLU + lexical_category * avg_surprisal
 
-#formulae <- formulas(~prop, full_set, freq_only, freq_MLU, full_surp, freq_surp, freq_MLU_surp)
-formulae <- formulas(~prop, full_surp, freq_surp, freq_MLU_surp)
+formulae <- formulas(~prop, full_set, freq_only, freq_MLU, full_surp, freq_surp, freq_MLU_surp)
+#formulae <- formulas(~prop, full_surp, freq_surp, freq_MLU_surp)
 
 fit_models <- function(data, formulae, contrasts = NULL) {
   models <- "no model"
@@ -159,17 +159,17 @@ run_crossv <- function(split_data){
   #Remove failed models
   models_kfold <- models_kfold_try %>% filter(models!="no model")
   sep_models_kfold <- models_kfold %>% 
-    mutate(#full_set = models_kfold$models %>% map(~ .$"full_set"),
-           #freq_only = models_kfold$models %>% map(~ .$"freq_only"),
-           #freq_MLU = models_kfold$models %>% map(~ .$"freq_MLU"),
+    mutate(full_set = models_kfold$models %>% map(~ .$"full_set"),
+           freq_only = models_kfold$models %>% map(~ .$"freq_only"),
+           freq_MLU = models_kfold$models %>% map(~ .$"freq_MLU"),
            full_surp = models_kfold$models %>% map(~ .$"full_surp"),
            freq_surp = models_kfold$models %>% map(~ .$"freq_surp"),
            freq_MLU_surp = models_kfold$models %>% map(~ .$"freq_MLU_surp")
     ) %>% 
     select(train, test, .id, 
-           #full_set, 
-           #freq_only, 
-           #freq_MLU, 
+           full_set, 
+           freq_only, 
+           freq_MLU, 
            full_surp, 
            freq_surp, 
            freq_MLU_surp)
@@ -188,8 +188,8 @@ run_crossv <- function(split_data){
   }
   
   if(nrow(sep_models_kfold)>0){
-    #model_names = c("full_set", "freq_only", "freq_MLU", "full_surp", "freq_surp", "freq_MLU_surp")
-    model_names = c("full_surp", "freq_surp", "freq_MLU_surp")
+    model_names = c("full_set", "freq_only", "freq_MLU", "full_surp", "freq_surp", "freq_MLU_surp")
+    #model_names = c("full_surp", "freq_surp", "freq_MLU_surp")
     errs_<- map(model_names, get_avg_errs) %>% reduce(rbind)
   }else{
     errs_ <- tibble(
