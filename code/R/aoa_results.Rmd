@@ -1,6 +1,7 @@
 ---
 title: "R Notebook"
 output:
+  pdf_document: default
   html_document:
     df_print: paged
 ---
@@ -42,26 +43,26 @@ model_errs_all = my_get_aoa_err_results(result_dir)
 Do data wrangling for plots
 ```{r no_aoa}
 
-model_errs_no_aoa = model_errs_all %>% 
+model_errs_no_surp = model_errs_all %>% 
   filter(model %in% c("full_set", "freq_only", "freq_MLU")) %>% 
   select(-c(group, child_name ))
 
-model_errs_with_aoa = model_errs_all %>% 
+model_errs_with_surp = model_errs_all %>% 
   filter(!(model %in% c("full_set", "freq_only", "freq_MLU")))
 
 
-combine_errs <- function(aoa_model, noaoa_model){
-  model_errs_with_aoa_full = model_errs_with_aoa %>%
-    filter(model == aoa_model) %>% 
-    gather(err_, value_aoa ,c(mse_, rmse_, mae_)) 
+combine_errs <- function(surp_model, nosurp_model){
+  model_errs_with_surp_full = model_errs_with_surp %>%
+    filter(model == surp_model) %>% 
+    gather(err_, value_surp ,c(mse_, rmse_, mae_)) 
   
-  model_errs_no_aoa_full = model_errs_no_aoa %>% 
-    filter(model == noaoa_model) %>% 
+  model_errs_no_surp_full = model_errs_no_surp %>% 
+    filter(model == nosurp_model) %>% 
     select(-c(kfolds, model)) %>% 
-    gather(err_, value_noaoa ,c(mse_, rmse_, mae_)) 
+    gather(err_, value_nosurp ,c(mse_, rmse_, mae_)) 
   
-  model_errs_full = model_errs_with_aoa_full %>% 
-    left_join(model_errs_no_aoa_full)
+  model_errs_full = model_errs_with_surp_full %>% 
+    left_join(model_errs_no_surp_full)
   return(model_errs_full)
 }
 
@@ -71,7 +72,7 @@ model_errs_freq = combine_errs("freq_surp", "freq_only")
 model_errs_freq_MLU = combine_errs("freq_MLU_surp", "freq_MLU")
 
 model_errs = rbind(model_errs_full,model_errs_freq, model_errs_freq_MLU)
-plot_data = model_errs %>% gather(has_aoa, value, c(value_aoa, value_noaoa))
+plot_data = model_errs %>% gather(has_surp, value, c(value_surp, value_nosurp))
 
 ```
 
@@ -79,7 +80,7 @@ plot_data = model_errs %>% gather(has_aoa, value, c(value_aoa, value_noaoa))
 ### 'Produces'
 ```{r plot1}
 ggplot(data = (plot_data %>% filter(err_=="mse_" & measure=="produces")), 
-            mapping = aes(x = has_aoa, y = value)) +
+            mapping = aes(x = has_surp, y = value)) +
   geom_point(alpha = 0.5, color="dark blue") +
   stat_summary(fun.y = "mean", 
                geom = "point",
@@ -91,7 +92,7 @@ ggplot(data = (plot_data %>% filter(err_=="mse_" & measure=="produces")),
 ### 'Understands'
 ```{r plot2}
 ggplot(data = (plot_data %>% filter(err_=="mse_" & measure=="understands")), 
-            mapping = aes(x = has_aoa, y = value)) +
+            mapping = aes(x = has_surp, y = value)) +
   geom_point(alpha = 0.5, color="dark blue") +
   stat_summary(fun.y = "mean", 
                geom = "point",
@@ -105,7 +106,7 @@ ggplot(data = (plot_data %>% filter(err_=="mse_" & measure=="understands")),
 ### 'Produces'
 ```{r plot3}
 ggplot(data = (plot_data %>% filter(err_=="rmse_" & measure=="produces")), 
-            mapping = aes(x = has_aoa, y = value)) +
+            mapping = aes(x = has_surp, y = value)) +
   geom_point(alpha = 0.5, color="dark blue") +
   stat_summary(fun.y = "mean", 
                geom = "point",
@@ -117,7 +118,7 @@ ggplot(data = (plot_data %>% filter(err_=="rmse_" & measure=="produces")),
 ### 'Understands'
 ```{r plot4}
 ggplot(data = (plot_data %>% filter(err_=="rmse_" & measure=="understands")), 
-            mapping = aes(x = has_aoa, y = value)) +
+            mapping = aes(x = has_surp, y = value)) +
   geom_point(alpha = 0.5, color="dark blue") +
   stat_summary(fun.y = "mean", 
                geom = "point",
@@ -133,7 +134,7 @@ ggplot(data = (plot_data %>% filter(err_=="rmse_" & measure=="understands")),
 ### 'Produces'
 ```{r plot5}
 ggplot(data = (plot_data %>% filter(err_=="mae_" & measure=="produces")), 
-            mapping = aes(x = has_aoa, y = value)) +
+            mapping = aes(x = has_surp, y = value)) +
   geom_point(alpha = 0.5, color="dark blue") +
   stat_summary(fun.y = "mean", 
                geom = "point",
@@ -145,7 +146,7 @@ ggplot(data = (plot_data %>% filter(err_=="mae_" & measure=="produces")),
 ### 'Understands'
 ```{r plot6}
 ggplot(data = (plot_data %>% filter(err_=="mae_" & measure=="understands")), 
-            mapping = aes(x = has_aoa, y = value)) +
+            mapping = aes(x = has_surp, y = value)) +
   geom_point(alpha = 0.5, color="dark blue") +
   stat_summary(fun.y = "mean", 
                geom = "point",
