@@ -1,0 +1,157 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+---
+
+
+```{r setup}
+knitr::opts_chunk$set(echo = TRUE)
+library("ggplot2")
+library("tidyverse")
+
+
+```
+
+Load results.
+
+```{r results}
+
+get_data <- function(filename){
+  load(filename)
+  res <- data.frame(cv_errs_data)
+  return(res)
+}
+
+my_get_aoa_err_results <- function(result_dir){
+  files = list.files(path=result_dir, pattern="*_cv_errs_data.RData", full.names=TRUE, recursive=FALSE)
+  df.aoa_err_results = files %>% map(get_data) %>% reduce(rbind)
+  return(df.aoa_err_results)
+}
+
+result_dir = "../../data/aoa_predictors/"
+model_errs_all = my_get_aoa_err_results(result_dir)
+
+
+
+
+```
+
+
+Do data wrangling for plots
+```{r no_aoa}
+
+model_errs_no_aoa = model_errs_all %>% 
+  filter(model %in% c("full_set", "freq_only", "freq_MLU")) %>% 
+  select(-c(group, child_name ))
+
+model_errs_with_aoa = model_errs_all %>% 
+  filter(!(model %in% c("full_set", "freq_only", "freq_MLU")))
+
+
+combine_errs <- function(aoa_model, noaoa_model){
+  model_errs_with_aoa_full = model_errs_with_aoa %>%
+    filter(model == aoa_model) %>% 
+    gather(err_, value_aoa ,c(mse_, rmse_, mae_)) 
+  
+  model_errs_no_aoa_full = model_errs_no_aoa %>% 
+    filter(model == noaoa_model) %>% 
+    select(-c(kfolds, model)) %>% 
+    gather(err_, value_noaoa ,c(mse_, rmse_, mae_)) 
+  
+  model_errs_full = model_errs_with_aoa_full %>% 
+    left_join(model_errs_no_aoa_full)
+  return(model_errs_full)
+}
+
+
+model_errs_full = combine_errs("full_surp", "full_set")
+model_errs_freq = combine_errs("freq_surp", "freq_only")
+model_errs_freq_MLU = combine_errs("freq_MLU_surp", "freq_MLU")
+
+model_errs = rbind(model_errs_full,model_errs_freq, model_errs_freq_MLU)
+plot_data = model_errs %>% gather(has_aoa, value, c(value_aoa, value_noaoa))
+
+```
+
+## MSE results
+### 'Produces'
+```{r plot1}
+ggplot(data = (plot_data %>% filter(err_=="mse_" & measure=="produces")), 
+            mapping = aes(x = has_aoa, y = value)) +
+  geom_point(alpha = 0.5, color="dark blue") +
+  stat_summary(fun.y = "mean", 
+               geom = "point",
+               shape = 21, 
+               fill = "red",
+               size = 4) +
+  facet_wrap(vars(model))
+```
+### 'Understands'
+```{r plot2}
+ggplot(data = (plot_data %>% filter(err_=="mse_" & measure=="understands")), 
+            mapping = aes(x = has_aoa, y = value)) +
+  geom_point(alpha = 0.5, color="dark blue") +
+  stat_summary(fun.y = "mean", 
+               geom = "point",
+               shape = 21, 
+               fill = "red",
+               size = 4) +
+  facet_wrap(vars(model))
+```
+
+## RMSE results
+### 'Produces'
+```{r plot3}
+ggplot(data = (plot_data %>% filter(err_=="rmse_" & measure=="produces")), 
+            mapping = aes(x = has_aoa, y = value)) +
+  geom_point(alpha = 0.5, color="dark blue") +
+  stat_summary(fun.y = "mean", 
+               geom = "point",
+               shape = 21, 
+               fill = "red",
+               size = 4) +
+  facet_wrap(vars(model))
+```
+### 'Understands'
+```{r plot4}
+ggplot(data = (plot_data %>% filter(err_=="rmse_" & measure=="understands")), 
+            mapping = aes(x = has_aoa, y = value)) +
+  geom_point(alpha = 0.5, color="dark blue") +
+  stat_summary(fun.y = "mean", 
+               geom = "point",
+               shape = 21, 
+               fill = "red",
+               size = 4) +
+  facet_wrap(vars(model))
+
+```
+
+
+## MAE results
+### 'Produces'
+```{r plot5}
+ggplot(data = (plot_data %>% filter(err_=="mae_" & measure=="produces")), 
+            mapping = aes(x = has_aoa, y = value)) +
+  geom_point(alpha = 0.5, color="dark blue") +
+  stat_summary(fun.y = "mean", 
+               geom = "point",
+               shape = 21, 
+               fill = "red",
+               size = 4) +
+  facet_wrap(vars(model))
+```
+### 'Understands'
+```{r plot6}
+ggplot(data = (plot_data %>% filter(err_=="mae_" & measure=="understands")), 
+            mapping = aes(x = has_aoa, y = value)) +
+  geom_point(alpha = 0.5, color="dark blue") +
+  stat_summary(fun.y = "mean", 
+               geom = "point",
+               shape = 21, 
+               fill = "red",
+               size = 4) +
+  facet_wrap(vars(model))
+```
+

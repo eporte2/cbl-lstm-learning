@@ -1,68 +1,15 @@
----
-title: AoA modeling
-output:
-  html_notebook:
-    highlight: tango
-    theme: spacelab
-editor_options: 
-  chunk_output_type: console
----
-
-```{r setup, include=FALSE}
 library(tools)
-library(tidyverse)
+#library(Hmisc)
 library(glue)
 library(broom)
 #library(broom.mixed)
 #library(langcog)
 library(stringr)
+library(tidyverse)
 library(lme4)
 library(modelr)
 library(purrr)
-```
 
-Data for model predictors originally from Braginsky et al. 2019  ('https://github.com/mikabr/aoa-prediction/blob/master/aoa_unified/aoa_analyses/aoa_modeling.Rmd')
-
-```{r load_data}
-load("../../data/aoa_predictors/uni_joined.RData")
-uni_joined_eng <- uni_joined %>% filter(language == "English (American)")
-
-predictors <- c("frequency", "MLU", "final_frequency", "solo_frequency",
-                "num_phons", "concreteness", "valence", "arousal", "babiness")
-.alpha <- 0.05
-set.seed(42)
-```
-
-Get model data (all other predictors) and list of uni_lemmas for avg_surprisal calculation
-```{r uni_lemma}
-# Model data
-model_data <- uni_joined_eng %>% 
-  select(uni_lemma, words, lexical_classes, !!predictors) %>%
-  distinct() %>%
-  mutate(lexical_category = if_else(
-    str_detect(lexical_classes, ","), "other", lexical_classes
-  ) %>%
-    as_factor() %>%
-    fct_collapse("predicates" = c("verbs", "adjectives", "adverbs"))) %>%
-  select(-lexical_classes)
-
-save(model_data, file = "../../data/aoa_predictors/model_data.RData")
-
-# get uni_lemmas for python script
-df.model_data<- model_data %>% 
-  mutate(word_clean = gsub(" [(].*$","",words)) %>%
-  mutate(word_clean = str_remove(word_clean, "['`*]")) %>% 
-  filter(!str_detect(word_clean, " ")) 
-
-df.uni_lemma <- df.model_data %>% select(word_clean, uni_lemma)
-
-write.table(df.uni_lemma, file=paste("../../data/aoa_predictors/aoa_words.csv"), sep = "\t", quote = FALSE, col.names = TRUE, row.names = FALSE)
-
-```
-
-After running python script to get the average model surprisal on these words for all models, load the other predictors and load average surprisal results
-
-```{r load}
 
 load("../../data/aoa_predictors/model_data.RData")
 load("../../data/aoa_predictors/uni_joined.RData")
@@ -88,10 +35,16 @@ my_get_prod_results <- function(result_dir){
 result_dir = "../../data/results/aoa_surprisals/"
 model_surprisals = my_get_prod_results(result_dir)
 model_surprisals = model_surprisals %>% filter(child_name!="Thomas")
-```
 
-Combine avg surprisal results with other predictors . Impute and scale data for models.
-```{r uni_model_data}
+average_child_surprisals = model_surprisals %>% 
+  group_by(word, uni_lemma) %>% 
+  mutate(child_name = "Average_child") %>% 
+  mutate(avg_surprisal = mean(avg_surprisal, na.rm=TRUE)) %>% 
+  ungroup() %>% 
+  unique()
+
+
+model_surprisals = average_child_surprisals
 surp_model_data <- model_surprisals %>% 
   select(uni_lemma, avg_surprisal, child_name) %>% 
   mutate(uni_lemma = as.character(uni_lemma)) %>% 
@@ -107,7 +60,7 @@ pred_sources <- list(
   c("valence", "arousal"),
   "concreteness", "babiness", "num_phons", "avg_surprisal"
 )
-### The imputation code is from Mika's paper
+
 fit_predictor <- function(pred, d) {
   xs <- pred_sources %>% discard(~pred %in% .x) %>% unlist()
   x_str <- xs %>% paste(collapse = " + ")
@@ -162,16 +115,9 @@ uni_model_data <- model_data_imputed %>%
   mutate(unscaled_age = age, age = scale(age),
          total = as.double(num_true + num_false), prop = num_true / total)
 
-```
+save(model_data_imputed, file = "../../data/aoa_predictors/model_data_imputed_avg_child.RData")
+save(uni_model_data, file = "../../data/aoa_predictors/uni_model_data_avg_child.RData")
 
-Save point -- model input data.
-```{r uni_model_data_save}
-save(model_data_imputed, file = "../../data/aoa_predictors/model_data_imputed.RData")
-save(uni_model_data, file = "../../data/aoa_predictors/uni_model_data.RData")
-```
-
-Model formulae to be tested.
-```{r formulae}
 full_set = ~ (age | item) + age * frequency + age * MLU + age * final_frequency + age * solo_frequency + age * num_phons + age * concreteness + age * valence + age * arousal + age * babiness + lexical_category * frequency + lexical_category * MLU + lexical_category * final_frequency + lexical_category * solo_frequency + lexical_category *  num_phons + lexical_category * concreteness + lexical_category * valence + lexical_category * arousal + lexical_category * babiness
 
 freq_only = ~ (age | item) + age * frequency + lexical_category * frequency
@@ -184,124 +130,8 @@ freq_surp = ~ (age | item) + age * frequency + age * avg_surprisal + lexical_cat
 
 freq_MLU_surp = ~ (age | item) + age * frequency + age * MLU + age * avg_surprisal + lexical_category * frequency + lexical_category * MLU + lexical_category * avg_surprisal
 
-#formulae <- formulas(~prop, full_set, freq_only, freq_MLU, full_surp, freq_surp, freq_MLU_surp)
-formulae <- formulas(~prop, full_surp, freq_surp, freq_MLU_surp)
-```
-
-
-Helper function to fit all models with lmer to a given data subset (from crossv). What are contrasts in lmer?
-```{r fit_models}
-
-fit_models <- function(data, formulae, contrasts = NULL) {
-  print("run model")
-  fit_with(data, glmer, formulae, family = "binomial",
-           weights = data$total, contrasts = contrasts) 
-}
-
-```
-
-The following error analyses metrics will be mesured for each model across folds.
-```{r errors}
-error_analysis <- function(model, data){
-  results = tibble(
-    mse_ = mse(model, data),
-    rmse_ = rmse(model, data),
-    #rsquare_ = rsquare(model, data),
-    mae_ = mae(model, data)
-    #  probs =  c(0.05, 0.25, 0.5, 0.75, 0.95),
-    #  qae_ = qae(model, data)
-    #  mape_ = mape(model, data),
-    #  rsae_ = rsae(model, data)
-  )
-  return(results)
-}
-```
-
-
-Run cross validation using kfolds for all models (formulae) and return average error scores across folds for each model. Repeat this process for all child models (lstms)
-```{r cv}
-run_crossv <- function(split_data){
-  group = unique(split_data$group)
-  print(paste("running models for", group))
-  name = paste("../../data/aoa_predictors/",
-               gsub(" ", "_", group, fixed = TRUE),
-               "_cv_models_data.RData", sep="")
-  
-  kfold5_data <- crossv_kfold(split_data, k=2)
-  models_kfold <- kfold5_data %>% 
-    mutate(models = train %>% map( ~ fit_models(., formulae)))
-  sep_models_kfold <- models_kfold %>% 
-    mutate(full_set = models_kfold$models %>% map(~ .$"full_set"),
-           freq_only = models_kfold$models %>% map(~ .$"freq_only"),
-           freq_MLU = models_kfold$models %>% map(~ .$"freq_MLU"),
-           full_surp = models_kfold$models %>% map(~ .$"full_surp"),
-           freq_surp = models_kfold$models %>% map(~ .$"freq_surp"),
-           freq_MLU_surp = models_kfold$models %>% map(~ .$"freq_MLU_surp")
-    ) %>% 
-    select(train, test, .id, 
-           full_set, 
-           freq_only, 
-           freq_MLU, 
-           full_surp, 
-           freq_surp, 
-           freq_MLU_surp)
-  
-  save(sep_models_kfold, file = name)
-  
-  get_avg_errs <- function(name){
-    errs_<- map2(sep_models_kfold[[name]], 
-                 sep_models_kfold$test, error_analysis) %>% 
-      reduce(rbind) 
-    model_names = c("mse_", "rmse_", "rsquare_", "mae_")
-    avgs = model_names %>% map(~mean(errs_[[.]]))
-    result <- data.frame(avgs)
-    colnames(result) = model_names
-    result <- result %>% mutate(model= name)
-  }
-  
-  model_names = c("full_set", "freq_only", "freq_MLU", "full_surp", "freq_surp", "freq_MLU_surp")
-  errs_<- map(model_names, get_avg_errs) %>% reduce(rbind)
-  
-  results <- errs_ %>% 
-    mutate(group = group,
-           child_name = unique(split_data$child_name),
-           measure = unique(split_data$measure)
-    )
-  
-  return(results)
-}
-
-group_data <- uni_model_data %>%
-  mutate(group = paste(child_name, measure),
-         lexical_category = lexical_category %>% fct_relevel("other")) %>%
-  select(child_name, measure, group, lexical_category, item = uni_lemma,
-         prop,total, age, !!predictors) %>%
-  mutate(item = as.factor(item)) %>% 
-  group_by(group) %>%
-  nest()
-
-
-cv_errs_data <- group_data %>% 
-  unnest() %>%
-  group_by(group) %>% 
-  split( .$group) %>% 
-  map(~ run_crossv(split_data = .)) %>% 
-  reduce(rbind)
-
-
-save(cv_errs_data, file = "../../data/aoa_predictors/cv_errs_data.RData")
-
-load("../../data/aoa_predictors/cv_errs_data.RData")
-```
-
-```{r norm}
-uni_model_data_small <- uni_model_data %>% filter(uni_lemma %in% df.uni_lemma$uni_lemma[1:50]) %>% 
-  filter(child_name == "Abe")
-
-split_data <- uni_model_data_small
-
-
-formulae <- formulas(~prop, full_surp, freq_surp, freq_MLU_surp)
+formulae <- formulas(~prop, full_set, freq_only, freq_MLU, full_surp, freq_surp, freq_MLU_surp)
+#formulae <- formulas(~prop, full_surp, freq_surp, freq_MLU_surp)
 
 fit_models <- function(data, formulae, contrasts = NULL) {
   models <- "no model"
@@ -332,23 +162,23 @@ run_crossv <- function(split_data){
                gsub(" ", "_", group, fixed = TRUE),
                "_cv_models_data.RData", sep="")
   
-  kfold5_data <- crossv_kfold(split_data, k=2)
+  kfold5_data <- crossv_kfold(split_data, k=5)
   models_kfold_try<- kfold5_data %>% 
     mutate(models = train %>% map( ~ fit_models(., formulae)))
   #Remove failed models
   models_kfold <- models_kfold_try %>% filter(models!="no model")
   sep_models_kfold <- models_kfold %>% 
-    mutate(#full_set = models_kfold$models %>% map(~ .$"full_set"),
-           #freq_only = models_kfold$models %>% map(~ .$"freq_only"),
-           #freq_MLU = models_kfold$models %>% map(~ .$"freq_MLU"),
+    mutate(full_set = models_kfold$models %>% map(~ .$"full_set"),
+           freq_only = models_kfold$models %>% map(~ .$"freq_only"),
+           freq_MLU = models_kfold$models %>% map(~ .$"freq_MLU"),
            full_surp = models_kfold$models %>% map(~ .$"full_surp"),
            freq_surp = models_kfold$models %>% map(~ .$"freq_surp"),
            freq_MLU_surp = models_kfold$models %>% map(~ .$"freq_MLU_surp")
     ) %>% 
     select(train, test, .id, 
-           #full_set, 
-           #freq_only, 
-           #freq_MLU, 
+           full_set, 
+           freq_only, 
+           freq_MLU, 
            full_surp, 
            freq_surp, 
            freq_MLU_surp)
@@ -367,8 +197,8 @@ run_crossv <- function(split_data){
   }
   
   if(nrow(sep_models_kfold)>0){
-    #model_names = c("full_set", "freq_only", "freq_MLU", "full_surp", "freq_surp", "freq_MLU_surp")
-    model_names = c("full_surp", "freq_surp", "freq_MLU_surp")
+    model_names = c("full_set", "freq_only", "freq_MLU", "full_surp", "freq_surp", "freq_MLU_surp")
+    #model_names = c("full_surp", "freq_surp", "freq_MLU_surp")
     errs_<- map(model_names, get_avg_errs) %>% reduce(rbind)
   }else{
     errs_ <- tibble(
@@ -390,7 +220,7 @@ run_crossv <- function(split_data){
 }
 
 run_cv_by_childname <- function(child){
-  group_data <- uni_model_data_small %>%
+  group_data <- uni_model_data %>%
     filter(child_name==child) %>% 
     mutate(group = paste(child_name, measure),
            lexical_category = lexical_category %>% fct_relevel("other")) %>%
@@ -415,5 +245,4 @@ run_cv_by_childname <- function(child){
   save(cv_errs_data, file = name)
 }
 
-uni_model_data_small$child_name %>% unique() %>% map(run_cv_by_childname)
-```
+uni_model_data$child_name %>% unique() %>% map(run_cv_by_childname)
