@@ -156,3 +156,218 @@ ggplot(data = (plot_data %>% filter(err_=="mae_" & measure=="understands")),
   facet_wrap(vars(model))
 ```
 
+
+## Average Child Results
+```{r avg_load}
+load("../../data/aoa_predictors/Average_child_cv_errs_data.RData")
+
+
+avg_errs_no_surp = cv_errs_data %>% 
+  filter(model %in% c("full_set", "freq_only", "freq_MLU")) %>% 
+  select(-c(group, child_name ))
+
+avg_errs_with_surp = cv_errs_data %>% 
+  filter(!(model %in% c("full_set", "freq_only", "freq_MLU")))
+
+
+combine_errs_avg <- function(surp_model, nosurp_model){
+  avg_errs_with_surp_full = avg_errs_with_surp %>%
+    filter(model == surp_model) %>% 
+    gather(err_, value_surp ,c(mse_, rmse_, mae_)) 
+  
+  avg_errs_no_surp_full = avg_errs_no_surp %>% 
+    filter(model == nosurp_model) %>% 
+    select(-c(kfolds, model)) %>% 
+    gather(err_, value_nosurp ,c(mse_, rmse_, mae_)) 
+  
+  model_errs_full = avg_errs_with_surp_full %>% 
+    left_join(avg_errs_no_surp_full)
+  return(model_errs_full)
+}
+
+
+avg_errs_full = combine_errs_avg("full_surp", "full_set")
+avg_errs_freq = combine_errs_avg("freq_surp", "freq_only")
+avg_errs_freq_MLU = combine_errs_avg("freq_MLU_surp", "freq_MLU")
+
+avg_errs = rbind(avg_errs_full,avg_errs_freq, avg_errs_freq_MLU)
+plot_data_avg = avg_errs %>% gather(has_surp, value, c(value_surp, value_nosurp))
+
+```
+
+## MSE results
+### 'Produces'
+```{r avg_plot1}
+ggplot(data = (plot_data_avg %>% filter(err_=="mse_" & measure=="produces")), 
+            mapping = aes(x = has_surp, y = value)) +
+  stat_summary(fun.y = "mean", 
+               geom = "point",
+               shape = 21, 
+               fill = "red",
+               size = 4) +
+  facet_wrap(vars(model))
+
+```
+### 'Understands'
+```{r avg_plot2}
+ggplot(data = (plot_data_avg %>% filter(err_=="mse_" & measure=="understands")), 
+            mapping = aes(x = has_surp, y = value)) +
+  stat_summary(fun.y = "mean", 
+               geom = "point",
+               shape = 21, 
+               fill = "red",
+               size = 4) +
+  facet_wrap(vars(model))
+
+```
+
+## RMSE results
+### 'Produces'
+```{r avg_plot3}
+ggplot(data = (plot_data_avg %>% filter(err_=="rmse_" & measure=="produces")), 
+            mapping = aes(x = has_surp, y = value)) +
+  stat_summary(fun.y = "mean", 
+               geom = "point",
+               shape = 21, 
+               fill = "red",
+               size = 4) +
+  facet_wrap(vars(model))
+
+```
+
+### 'Understands'
+```{r avg_plot4}
+ggplot(data = (plot_data_avg %>% filter(err_=="rmse_" & measure=="understands")), 
+            mapping = aes(x = has_surp, y = value)) +
+  stat_summary(fun.y = "mean", 
+               geom = "point",
+               shape = 21, 
+               fill = "red",
+               size = 4) +
+  facet_wrap(vars(model))
+
+```
+
+
+## MAE results
+### 'Produces'
+```{r avg_plot5}
+ggplot(data = (plot_data_avg %>% filter(err_=="mae_" & measure=="produces")), 
+            mapping = aes(x = has_surp, y = value)) +
+  stat_summary(fun.y = "mean", 
+               geom = "point",
+               shape = 21, 
+               fill = "red",
+               size = 4) +
+  facet_wrap(vars(model))
+
+```
+
+### 'Understands'
+```{r avg_plot6}
+ggplot(data = (plot_data_avg %>% filter(err_=="mae_" & measure=="understands")), 
+            mapping = aes(x = has_surp, y = value)) +
+  stat_summary(fun.y = "mean", 
+               geom = "point",
+               shape = 21, 
+               fill = "red",
+               size = 4) +
+  facet_wrap(vars(model))
+
+```
+
+
+```{r results_byword}
+
+error_analysis_byword <- function(model, data){
+  
+  get_mse <- function(data_word){
+    return(tibble(
+      item = unique(data_word$item), 
+      measure = mse(model, data_word)))
+  }
+  
+  data = data$data %>% 
+    group_by(item)
+  results = data %>%
+    split( .$item) %>% 
+    map(get_mse) %>% 
+    reduce(rbind)
+    
+  return(results)
+}
+
+get_errs_byword <- function(name){
+  print(name)
+  get_mean<-function(data){
+    return(tibble(
+      item = unique(data$item), 
+      measure = mean(data$measure)))
+  }
+    errs_<- map2(sep_models_kfold[[name]], 
+                 sep_models_kfold$test, error_analysis_byword) %>% 
+      reduce(rbind) 
+    results =  errs_ %>%
+      group_by(item) %>% 
+      split( .$item) %>% 
+      map(get_mean) %>% 
+      reduce(rbind)
+    results <- results %>% mutate(model= name)
+    return(results)
+}
+
+model_names = c("full_set", "freq_only", "freq_MLU", "full_surp", "freq_surp", "freq_MLU_surp")
+
+load("../../data/aoa_predictors/Average_child_produces_cv_models_data.RData")  
+errs_produces_byword<- map(model_names, get_errs_byword) %>% reduce(rbind) 
+
+
+#load("../../data/aoa_predictors/Average_child_understands_cv_models_data.RData")  
+#errs_understands_byword<- map(model_names, get_errs_byword) %>% reduce(rbind)
+```
+
+```{r plot7, eval=FALSE}
+plot_data <- errs_produces_byword %>% 
+  filter(model %in% c("full_set", "full_surp"))
+
+p = ggplot(plot_data, 
+            mapping = aes(x = model, y = measure, group=item)) +
+  geom_line(alpha = 0.5, color="dark blue") +
+  geom_point(alpha = 0.5, color="dark blue")  +
+  facet_wrap(vars(item))
+
+
+ggsave("mse_byword.pdf",plot=p, width = 20, height = 30, units="in", limitsize = FALSE)
+```
+
+```{r avg_betas}
+library(sjPlot)
+
+model_names <- c("full_set", "full_surp")
+
+get_betas_byfold <- function(name){
+  index<-1
+  folds = sep_models_kfold[[name]]
+  get_tidy<-function(model){
+    results <- tidy(model) %>% 
+      mutate(fold = index)
+    index <<-index+1
+    return(results)
+  }
+
+  betas <- folds %>% 
+    map(get_tidy) %>% 
+    reduce(rbind) %>% 
+    mutate(model= name)
+  return(betas)
+}
+
+
+all_predictors <- model_names %>% 
+  map(get_betas_byfold) %>% 
+  reduce(rbind)
+```
+
+```{r plot8}
+
+```
