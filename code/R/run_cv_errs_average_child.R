@@ -118,19 +118,32 @@ uni_model_data <- model_data_imputed %>%
 save(model_data_imputed, file = "../../data/aoa_predictors/model_data_imputed_avg_child.RData")
 save(uni_model_data, file = "../../data/aoa_predictors/uni_model_data_avg_child.RData")
 
+#full_set = ~ (age | item) + age * frequency + age * MLU + age * final_frequency + age * solo_frequency + age * num_phons + age * concreteness + age * valence + age * arousal + age * babiness + lexical_category * frequency + lexical_category * MLU + lexical_category * final_frequency + lexical_category * solo_frequency + lexical_category *  num_phons + lexical_category * concreteness + lexical_category * valence + lexical_category * arousal + lexical_category * babiness
+
+#freq_only = ~ (age | item) + age * frequency + lexical_category * frequency
+
+#freq_MLU = ~ (age | item) + age * frequency + age * MLU + lexical_category * frequency + lexical_category * MLU
+
+#full_surp = ~ (age | item) + age * avg_surprisal + age * frequency + age * MLU + age * final_frequency + age * solo_frequency + age * num_phons + age * concreteness + age * valence + age * arousal + age * babiness + lexical_category * avg_surprisal + lexical_category * frequency + lexical_category * MLU + lexical_category * final_frequency + lexical_category * solo_frequency + lexical_category * num_phons + lexical_category * concreteness + lexical_category * valence + lexical_category * arousal + lexical_category * babiness
+
+#freq_surp = ~ (age | item) + age * frequency + age * avg_surprisal + lexical_category * frequency + lexical_category * avg_surprisal
+
+#freq_MLU_surp = ~ (age | item) + age * frequency + age * MLU + age * avg_surprisal + lexical_category * frequency + lexical_category * MLU + lexical_category * avg_surprisal
+
 full_set = ~ (age | item) + age * frequency + age * MLU + age * final_frequency + age * solo_frequency + age * num_phons + age * concreteness + age * valence + age * arousal + age * babiness + lexical_category * frequency + lexical_category * MLU + lexical_category * final_frequency + lexical_category * solo_frequency + lexical_category *  num_phons + lexical_category * concreteness + lexical_category * valence + lexical_category * arousal + lexical_category * babiness
 
 freq_only = ~ (age | item) + age * frequency + lexical_category * frequency
 
 freq_MLU = ~ (age | item) + age * frequency + age * MLU + lexical_category * frequency + lexical_category * MLU
 
-full_surp = ~ (age | item) + age * avg_surprisal + age * frequency + age * MLU + age * final_frequency + age * solo_frequency + age * num_phons + age * concreteness + age * valence + age * arousal + age * babiness + lexical_category * avg_surprisal + lexical_category * frequency + lexical_category * MLU + lexical_category * final_frequency + lexical_category * solo_frequency + lexical_category * num_phons + lexical_category * concreteness + lexical_category * valence + lexical_category * arousal + lexical_category * babiness
+full_surp = ~ (age | item) + age * avg_surprisal + age * MLU + age * final_frequency + age * solo_frequency + age * num_phons + age * concreteness + age * valence + age * arousal + age * babiness + lexical_category * avg_surprisal + lexical_category * MLU + lexical_category * final_frequency + lexical_category * solo_frequency + lexical_category * num_phons + lexical_category * concreteness + lexical_category * valence + lexical_category * arousal + lexical_category * babiness
 
-freq_surp = ~ (age | item) + age * frequency + age * avg_surprisal + lexical_category * frequency + lexical_category * avg_surprisal
+freq_surp = ~ (age | item) + age * avg_surprisal + lexical_category * avg_surprisal
 
-freq_MLU_surp = ~ (age | item) + age * frequency + age * MLU + age * avg_surprisal + lexical_category * frequency + lexical_category * MLU + lexical_category * avg_surprisal
+freq_MLU_surp = ~ (age | item) + age * MLU + age * avg_surprisal + lexical_category * MLU + lexical_category * avg_surprisal
 
 formulae <- formulas(~prop, full_set, freq_only, freq_MLU, full_surp, freq_surp, freq_MLU_surp)
+
 #formulae <- formulas(~prop, full_surp, freq_surp, freq_MLU_surp)
 
 fit_models <- function(data, formulae, contrasts = NULL) {
@@ -160,9 +173,9 @@ run_crossv <- function(split_data){
   print(paste("running models for", group))
   name = paste("../../data/aoa_predictors/",
                gsub(" ", "_", group, fixed = TRUE),
-               "_cv_models_data10.RData", sep="")
+               "_cv_models_data5_nofreq.RData", sep="")
   
-  kfold5_data <- crossv_kfold(split_data, k=10)
+  kfold5_data <- crossv_kfold(split_data, k=5)
   models_kfold_try<- kfold5_data %>% 
     mutate(models = train %>% map( ~ fit_models(., formulae)))
   #Remove failed models
@@ -239,7 +252,7 @@ run_cv_by_childname <- function(child){
   
   name = paste("../../data/aoa_predictors/",
                gsub(" ", "_", child, fixed = TRUE),
-               "_cv_errs_data_10.RData", sep="")
+               "_cv_errs_data5_nofreq.RData", sep="")
   
   
   save(cv_errs_data, file = name)

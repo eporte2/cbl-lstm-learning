@@ -369,5 +369,168 @@ all_predictors <- model_names %>%
 ```
 
 ```{r plot8}
+plot_data = all_predictors %>% group_by(model) %>% arrange(estimate)
+
+p = ggplot(plot_data, 
+            mapping = aes(y = estimate, x= term, group=model, color=model)) +
+    geom_line(y=0, color="black", alpha = 0.5) +
+    stat_summary(fun.y = "mean", 
+               fun.ymin = min,
+               fun.ymax = max,
+               alpha = 0.5
+               ) +
+  coord_flip()
+  
+ggsave("mean_betas_byfold.pdf",plot=p, width = 10, height = 20, units="in", limitsize = FALSE)
+```
+
+```{r plot9}
+plot_data = all_predictors %>% filter(term %in% c("frequency", "MLU", "solo_frequency","final_frequency", "valence","num_phons","concreteness","babiness", "arousal","avg_surprisal"))
+
+p = ggplot(plot_data, 
+            mapping = aes(y = estimate, x= term, group=model, color=model)) +
+    geom_line(y=0, color="black", alpha = 0.5) +
+    geom_point(alpha = 0.3)+
+    stat_summary(fun.y = "mean",
+                 geom = "point",
+                 size= 4)+
+  coord_flip()
+  
+```
+
+```{r plot9}
+
+test = all_predictors %>% separate(term, c("term","interaction"), sep=":" )
+age_predictors = test %>% filter(term=="age" & interaction %in% c("frequency", "MLU", "solo_frequency","final_frequency", "valence","num_phons","concreteness","babiness", "arousal","avg_surprisal")) 
+core_predictors = test %>% filter(is.na(interaction) & term %in% c("frequency", "MLU", "solo_frequency","final_frequency", "valence","num_phons","concreteness","babiness", "arousal","avg_surprisal"))
+lexical_predictors = test %>% filter(interaction %in% c("lexical_categorynouns","lexical_categorypredicates","lexical_categoryfunction_words"))
+
+plot_data = core_predictors 
+
+p = ggplot(plot_data, 
+            mapping = aes(y = estimate, x= term, group=model, color=model)) +
+    geom_line(y=0, color="black", alpha = 0.5) +
+    geom_point(alpha = 0.3, size= 2)+
+    stat_summary(fun.y = "mean",
+                 geom = "point",
+                 size= 6)+
+  coord_flip() +
+  theme(text = element_text(size=24))
+
+ggsave("core_predictors.png",plot=p, width = 10, height = 6, units="in", limitsize = FALSE)
+
+
+plot_data = age_predictors
+
+p = ggplot(plot_data, 
+            mapping = aes(y = estimate, x= interaction, group=model, color=model)) +
+    geom_line(y=0, color="black", alpha = 0.5) +
+    geom_point(alpha = 0.3, size=2)+
+    stat_summary(fun.y = "mean",
+                 geom = "point",
+                 size= 6)+
+  coord_flip() +
+  theme(text = element_text(size=24))
+
+ggsave("age_predictors.png",plot=p, width = 10, height = 6, units="in", limitsize = FALSE)
+
+
+plot_data = lexical_predictors
+
+p = ggplot(plot_data, 
+            mapping = aes(y = estimate, x= term, group=model, color=model)) +
+    geom_line(y=0, color="black", alpha = 0.5) +
+    geom_point(alpha = 0.3, size=2)+
+    stat_summary(fun.y = "mean",
+                 geom = "point",
+                 size= 6)+
+  coord_flip() +
+  facet_wrap(vars(interaction))+
+  theme(text = element_text(size=24))
+
+ggsave("lexical_predictors.png",plot=p, width = 17, height = 6, units="in", limitsize = FALSE)
+  
+
+p = ggplot(data = (plot_data_avg %>% filter(err_=="mse_" & measure=="produces" & model %in% c("full_set","full_surp"))), 
+            mapping = aes(x = has_surp, y = value)) +
+  stat_summary(fun.y = "mean", 
+               geom = "bar") +
+  ggtitle("Mean MSE by model for kfold (5) cross-validation")+
+  theme(text = element_text(size=18))
+
+ggsave("overall_mse.png",plot=p, width = 10, height = 6, units="in", limitsize = FALSE)
+
+
+
+load("../../data/aoa_predictors/uni_model_data.RData")
+word_cat = uni_model_data %>% ungroup() %>%  select(uni_lemma, lexical_category) %>% unique() %>% 
+  mutate(lexical_category = lexical_category %>% fct_relevel("other")) %>% 
+  mutate(item = uni_lemma) %>% 
+  select(item, lexical_category)
+
+
+
+words_lexcat_mse <- errs_produces_byword %>% 
+  filter(model %in% c("full_set", "full_surp")) %>% 
+  spread(model, measure) %>% 
+  mutate(diff = full_set - full_surp) %>% 
+  arrange(desc(diff)) %>% 
+  left_join(word_cat)
+
+plot_data = words_lexcat_mse
+p = ggplot(data = plot_data %>% filter(diff > 50), 
+            aes(x = reorder(item,diff), y = diff, fill=lexical_category)) +
+  geom_bar(stat='identity') +
+  coord_flip()+
+  ggtitle("Difference in mean MSE by word")+
+  theme(text = element_text(size=18))
+
+ggsave("mse_diff_byword.png",plot=p, width = 7, height = 7, units="in", limitsize = FALSE)
+
+p = ggplot(data = plot_data, 
+            aes(x = reorder(item,diff), y = diff, fill=lexical_category)) +
+  geom_bar(stat='identity') +
+  theme(legend.text = element_text(size=18))
+
+ggsave("mse_diff_byword_all.png",plot=p, width = 20, height = 7, units="in", limitsize = FALSE)
+
+
+surprisals_cat <- average_child_surprisals %>% 
+  mutate(item = uni_lemma) %>% select(-c(uni_lemma)) %>% 
+  left_join(word_cat)
+
+plot_data = surprisals_cat
+
+p = ggplot(data = plot_data, 
+            aes(x = reorder(item,avg_surprisal), y = avg_surprisal, fill=lexical_category)) +
+  geom_bar(stat='identity') +
+  theme(legend.text = element_text(size=18))
+
+```
+
+
+```{r cor}
+predictors <- c("avg_surprisal","frequency", "MLU", "final_frequency", "solo_frequency", "num_phons", "concreteness", "valence", "arousal", "babiness")
+
+load("../../data/aoa_predictors/uni_model_data_avg_child.RData")
+
+uni_model_data <- uni_model_data %>%
+    mutate(lexical_category = lexical_category %>% fct_relevel("other")) %>%
+    select(child_name, measure, lexical_category, item = uni_lemma,
+           prop,total, age, !!predictors) %>%
+    mutate(item = as.factor(item))
+
+
+cor_data <- uni_model_data %>% ungroup() %>% filter(measure=='produces') %>% select(!!predictors)
+cor(cor_data, method = "pearson")
+
+cor_data <- uni_model_data %>% ungroup() %>% filter(measure=='produces' & lexical_category=="predicates") %>% select(!!predictors)
+cor(cor_data, method = "pearson")
+```
+
+```{r vif}
+library(car)
+model <- sep_models_kfold[["full_surp"]][[1]]
+vif(model)
 
 ```
