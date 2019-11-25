@@ -14,6 +14,8 @@ library(purrr)
 load("../../data/aoa_predictors/model_data_imputed_avg_child.RData")
 load("../../data/aoa_predictors/uni_model_data_avg_child.RData")
 
+predictors <- c("avg_surprisal","frequency", "MLU", "final_frequency", "solo_frequency", "num_phons", "concreteness", "valence", "arousal", "babiness")
+
 #full_set = ~ (age | item) + age * frequency + age * MLU + age * final_frequency + age * solo_frequency + age * num_phons + age * concreteness + age * valence + age * arousal + age * babiness + lexical_category * frequency + lexical_category * MLU + lexical_category * final_frequency + lexical_category * solo_frequency + lexical_category *  num_phons + lexical_category * concreteness + lexical_category * valence + lexical_category * arousal + lexical_category * babiness
 
 #freq_only = ~ (age | item) + age * frequency + lexical_category * frequency
