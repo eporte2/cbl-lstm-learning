@@ -16,11 +16,6 @@ load("../../data/aoa_predictors/uni_model_data_avg_child.RData")
 
 predictors <- c("avg_surprisal","frequency", "MLU", "final_frequency", "solo_frequency", "num_phons", "concreteness", "valence", "arousal", "babiness")
 
-#full_set = ~ (age | item) + age * frequency + age * MLU + age * final_frequency + age * solo_frequency + age * num_phons + age * concreteness + age * valence + age * arousal + age * babiness + lexical_category * frequency + lexical_category * MLU + lexical_category * final_frequency + lexical_category * solo_frequency + lexical_category *  num_phons + lexical_category * concreteness + lexical_category * valence + lexical_category * arousal + lexical_category * babiness
-
-#freq_only = ~ (age | item) + age * frequency + lexical_category * frequency
-
-#freq_MLU = ~ (age | item) + age * frequency + age * MLU + lexical_category * frequency + lexical_category * MLU
 
 full_surp = ~ (age | item) + age * avg_surprisal + age * frequency + age * MLU + age * final_frequency + age * solo_frequency + age * num_phons + age * concreteness + age * valence + age * arousal + age * babiness + lexical_category * avg_surprisal + lexical_category * frequency + lexical_category * MLU + lexical_category * final_frequency + lexical_category * solo_frequency + lexical_category * num_phons + lexical_category * concreteness + lexical_category * valence + lexical_category * arousal + lexical_category * babiness
 
@@ -78,18 +73,18 @@ run_crossv <- function(split_data){
   sep_models_kfold <- models_kfold %>% 
     mutate(full_set = models_kfold$models %>% map(~ .$"full_set"),
            freq_only = models_kfold$models %>% map(~ .$"freq_only"),
-           freq_MLU = models_kfold$models %>% map(~ .$"freq_MLU"),
+           surp_only = models_kfold$models %>% map(~ .$"surp_only"),
            full_surp = models_kfold$models %>% map(~ .$"full_surp"),
            freq_surp = models_kfold$models %>% map(~ .$"freq_surp"),
-           freq_MLU_surp = models_kfold$models %>% map(~ .$"freq_MLU_surp")
+           full_surp_only = models_kfold$models %>% map(~ .$"full_surp_only")
     ) %>% 
     select(train, test, .id, 
            full_set, 
            freq_only, 
-           freq_MLU, 
+           surp_only, 
            full_surp, 
            freq_surp, 
-           freq_MLU_surp)
+           full_surp_only)
   
   save(sep_models_kfold, file = name)
   
@@ -106,7 +101,6 @@ run_crossv <- function(split_data){
   
   if(nrow(sep_models_kfold)>0){
     model_names = c("full_set", "freq_only", "full_surp", "freq_surp", "surp_only", "full_surp_only")
-    #model_names = c("full_surp", "freq_surp", "freq_MLU_surp")
     errs_<- map(model_names, get_avg_errs) %>% reduce(rbind)
   }else{
     errs_ <- tibble(
@@ -129,7 +123,7 @@ run_crossv <- function(split_data){
 
 run_cv_by_childname <- function(child){
   group_data <- uni_model_data %>%
-    filter(child_name==child) %>% 
+    filter(child_name==child & measure=="produces") %>% 
     mutate(group = paste(child_name, measure),
            lexical_category = lexical_category %>% fct_relevel("other")) %>%
     select(child_name, measure, group, lexical_category, item = uni_lemma,
