@@ -63,9 +63,9 @@ run_crossv <- function(split_data){
   print(paste("running models for", group))
   name = paste("../../data/aoa_predictors/",
                gsub(" ", "_", group, fixed = TRUE),
-               "_cv_models_data10_nofreq.RData", sep="")
+               "_cv_models_data4_nofreq.RData", sep="")
   
-  kfold5_data <- crossv_kfold(split_data, k=10)
+  kfold5_data <- crossv_kfold((ungroup(split_data)), k=4)
   models_kfold_try<- kfold5_data %>% 
     mutate(models = train %>% map( ~ fit_models(., formulae)))
   #Remove failed models
@@ -141,7 +141,7 @@ run_cv_by_childname <- function(child){
   
   name = paste("../../data/aoa_predictors/",
                gsub(" ", "_", child, fixed = TRUE),
-               "_cv_errs_data10_nofreq.RData", sep="")
+               "_cv_errs_data4_nofreq.RData", sep="")
   
   
   save(cv_errs_data, file = name)

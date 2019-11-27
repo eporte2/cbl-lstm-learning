@@ -196,13 +196,13 @@ p = ggplot(plot_data,
   facet_wrap(vars(item))
 
 
-ggsave("mse_byword.pdf",plot=p, width = 20, height = 30, units="in", limitsize = FALSE)
+#ggsave("mse_byword.pdf",plot=p, width = 20, height = 30, units="in", limitsize = FALSE)
 ```
 
 ```{r avg_betas}
 library(sjPlot)
 
-model_names <- c("freq_only", "freq_surp")
+model_names <- c("full_set","full_surp")
 
 get_betas_byfold <- function(name){
   index<-1
@@ -330,21 +330,25 @@ word_cat = uni_model_data %>% ungroup() %>%  select(uni_lemma, lexical_category)
 
 
 words_lexcat_mse <- errs_produces_byword %>% 
-  filter(model %in% c("full_set", "full_surp")) %>% 
+  filter(model %in% c("freq_only", "freq_surp")) %>% 
   spread(model, measure) %>% 
-  mutate(diff = full_set - full_surp) %>% 
+  mutate(diff = freq_only - freq_surp) %>% 
   arrange(desc(diff)) %>% 
   left_join(word_cat)
 
 plot_data = words_lexcat_mse
-p = ggplot(data = plot_data %>% filter(diff > 10), 
+p = ggplot(data = plot_data %>% arrange(desc(diff)) %>% head(50), 
             aes(x = reorder(item,diff), y = diff, fill=lexical_category)) +
   geom_bar(stat='identity') +
   coord_flip()+
-  ggtitle("Difference in mean MSE by word")+
-  theme(text = element_text(size=18))
+  scale_fill_discrete(name = "Lexical category", labels = c("unmarked", "nouns", "function words", "predicates"))+
+  theme(text = element_text(size=18))+
+  labs(x="word", y="difference in MSE")
 
-#ggsave("mse_diff_byword.png",plot=p, width = 7, height = 7, units="in", limitsize = FALSE)
+ words_lexcat_mse %>% group_by(lexical_category) %>% count()
+ words_lexcat_mse %>% arrange(desc(diff)) %>% head(50) %>% group_by(lexical_category) %>% count()
+
+ggsave("mse_diff_byword_top50.png",plot=p, width = 7, height = 8, units="in", limitsize = FALSE)
 
 p = ggplot(data = plot_data, 
             aes(x = reorder(item,diff), y = diff, fill=lexical_category)) +
