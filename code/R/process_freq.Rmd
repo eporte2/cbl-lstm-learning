@@ -1,0 +1,97 @@
+---
+title: "process_freq"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tools)
+#library(Hmisc)
+library(glue)
+library(broom)
+#library(broom.mixed)
+#library(langcog)
+library(stringr)
+library(tidyverse)
+library(lme4)
+library(modelr)
+library(purrr)
+
+```
+
+# TO DO
+1. Load in frequency counts
+2. Change 0 to NA ?
+3. Load in token counts
+4. merge total train token counts with frequency
+5. weight frequencies by corpus size
+6. calculate mean freq by word
+7. add data to predictors
+
+
+## 1. Load in frequency counts
+```{r load_freq}
+my_get_transcript_results <- function(file){
+  df = read.csv(file)
+  #Extract child name from file name and add variable.
+  file_name = strsplit(file_path_sans_ext(file), "/")[[1]]
+  file_name = file_name[(length(file_name))]
+  child_name = strsplit(file_name,".aoa_freq", fixed=TRUE)[[1]]
+  df = df %>%
+    mutate(child_name = child_name)
+  return(df)
+}
+
+my_get_prod_results <- function(result_dir){
+  files = list.files(path=result_dir, pattern="*.csv", full.names=TRUE, recursive=FALSE)
+  df.prod_results = files %>% map(my_get_transcript_results) %>% reduce(rbind)
+  return(df.prod_results)
+}
+
+result_dir = "../../data/results/aoa_frequencies/"
+frequencies = my_get_prod_results(result_dir)
+frequencies = frequencies %>% filter(child_name!="Thomas")
+
+```
+
+
+## 2. Change zeros to NAs
+Zeros represent words that aren't present in the corpus. Since I didn't consider these words when averaging surprisals, I won't consider them either for frequencies.
+```{r remove_0}
+
+frequencies <- frequencies %>% 
+  mutate(frequency_count = na_if(frequency_count, 0))
+
+```
+
+
+## 3/4. Load in total train token counts and merge with frequencies df
+```{r total_counts}
+total_counts = read.csv("../../data/results/token_counts_eng.csv") %>% 
+  mutate(child_name = file) %>% 
+  select(child_name, train_tokens)
+
+frequencies <- frequencies %>% left_join(total_counts) 
+
+```
+
+
+## 5. weight frequencies by corpus size
+```{r weight_freq}
+
+weighted_freq <- frequencies %>% filter(!is.na(frequency_count)) %>% 
+  mutate(weighted_freq = (frequency_count/train_tokens)*10000) 
+
+```
+
+## 6. Average weighted frequencies by word across corpora
+```{r mean_freq}
+avg_freq <- weighted_freq %>% 
+  group_by(word, uni_lemma) %>% 
+  summarise(avg_freq = mean(weighted_freq))
+```
+
+## 7. Combine results with other predictors. To do so, I will save results and load again in predict_AoA.Rmd
+```{r save_freq}
+save(avg_freq, file = "../../data/aoa_predictors/avg_freq.RData")
+```

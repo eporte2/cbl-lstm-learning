@@ -31,92 +31,78 @@ full_surp_only = ~ (age | item) + age * avg_surprisal + age * MLU + age * final_
 
 surp_only = ~ (age | item) + age * avg_surprisal + lexical_category * avg_surprisal
 
+null_model = ~ 1
+
+random_effect_model = ~ (age | item)
 
 formulae <- formulas(~prop, full_set, freq_only, full_surp, freq_surp, surp_only, full_surp_only)
 
+#formulae <- formulas(~prop, null_model)
 
+#formulae <- formulas(~prop, random_effect_model)
+#data <- split_data[models_kfold$train[[2]],]
+#random_effect_model_test <- fit_with(data, glmer, formulae, family = "binomial",
+#                            weights = data$total, contrasts = contrasts)
 
-fit_models <- function(data, formulae, contrasts = NULL) {
-  models <- "no model"
-  print("run model")
-  try(models <- fit_with(data, glmer, formulae, family = "binomial",
-                         weights = data$total, contrasts = contrasts))
-  return(models)
-}
-
-error_analysis <- function(model, data){
-  results = tibble(
-    mse_ = mse(model, data),
-    rmse_ = rmse(model, data),
-    #rsquare_ = rsquare(model, data),
-    mae_ = mae(model, data)
-    #  probs =  c(0.05, 0.25, 0.5, 0.75, 0.95),
-    #  qae_ = qae(model, data)
-    #  mape_ = mape(model, data),
-    #  rsae_ = rsae(model, data)
-  )
-  return(results)
-}
 
 run_crossv <- function(split_data){
   group = unique(split_data$group)
   print(paste("running models for", group))
   name = paste("../../data/aoa_predictors/",
                gsub(" ", "_", group, fixed = TRUE),
-               "_cv_models_data4_nofreq.RData", sep="")
+               "_cv_models_data10_newpipe.RData", sep="")
   
-  kfold5_data <- crossv_kfold((ungroup(split_data)), k=4)
-  models_kfold_try<- kfold5_data %>% 
-    mutate(models = train %>% map( ~ fit_models(., formulae)))
+  kfold10_data <- crossv_kfold((ungroup(split_data)), k=10)
+  
+  fit_models <- function(fold, formulae, contrasts = NULL) {
+    models <- "no model"
+    print("run model")
+    train_idx <- kfold10_data[fold,1][[1]][[1]]$idx
+    test_idx <- kfold10_data[fold,2][[1]][[1]]$idx
+    data <- split_data[train_idx,]
+    try(models <- fit_with(data, glmer, formulae, family = "binomial",
+                           weights = data$total, contrasts = contrasts))
+    
+    result = tibble(
+      train = list(train_idx),
+      test = list(test_idx),
+      models = models)
+    
+    return(result)
+    
+  }
+  
+  mse_calc <- function(n){
+    test_data = split_data[models_kfold$test[[n]],]
+    Y = test_data$prop
+    Y_pred = predict(models_kfold$models[[n]],  test_data, type="response")
+    mse_ = mean((Y - Y_pred)^2)
+    return(mse_)
+  }
+  
+  
+  models_kfold_try<- c(1:10) %>% map( ~ fit_models(., formulae)) %>% reduce(rbind)
   #Remove failed models
-  models_kfold <- models_kfold_try %>% filter(models!="no model")
+  
+  test2 <- models_kfold_try[1,3][[1]]
+  
+  model_name <- tibble(
+    model_name = as_factor(rep(c("full_set", "freq_only", "full_surp", "freq_surp", "surp_only", "full_surp_only"), 10)))
+  
+  models_kfold <- cbind(models_kfold_try,  model_name)
+  
+  #models_kfold_try <- sep_models_kfold  %>% gather( key= model_name, value = "models", full_set, freq_only, full_surp, freq_surp, surp_only, full_surp_only)
+  
   sep_models_kfold <- models_kfold %>% 
-    mutate(full_set = models_kfold$models %>% map(~ .$"full_set"),
-           freq_only = models_kfold$models %>% map(~ .$"freq_only"),
-           surp_only = models_kfold$models %>% map(~ .$"surp_only"),
-           full_surp = models_kfold$models %>% map(~ .$"full_surp"),
-           freq_surp = models_kfold$models %>% map(~ .$"freq_surp"),
-           full_surp_only = models_kfold$models %>% map(~ .$"full_surp_only")
-    ) %>% 
-    select(train, test, .id, 
-           full_set, 
-           freq_only, 
-           surp_only, 
-           full_surp, 
-           freq_surp, 
-           full_surp_only)
-  
+    mutate(mse_ = c(1:60) %>% map(~ mse_calc(.)))
+
   save(sep_models_kfold, file = name)
-  
-  get_avg_errs <- function(name){
-    errs_<- map2(sep_models_kfold[[name]], 
-                 sep_models_kfold$test, error_analysis) %>% 
-      reduce(rbind) 
-    model_names = c("mse_", "rmse_", "mae_")
-    avgs = model_names %>% map(~mean(errs_[[.]]))
-    result <- data.frame(avgs)
-    colnames(result) = model_names
-    result <- result %>% mutate(model= name)
-  }
-  
-  if(nrow(sep_models_kfold)>0){
-    model_names = c("full_set", "freq_only", "full_surp", "freq_surp", "surp_only", "full_surp_only")
-    errs_<- map(model_names, get_avg_errs) %>% reduce(rbind)
-  }else{
-    errs_ <- tibble(
-      mse_ = NA,
-      rmse_ = NA,
-      mae_ = NA,
-      model = NA
-    )
-  }
-  
-  results <- errs_ %>% 
-    mutate(group = group,
-           child_name = unique(split_data$child_name),
-           measure = unique(split_data$measure),
-           kfolds = nrow(sep_models_kfold)
-    )
+
+  results <- sep_models_kfold %>% 
+    group_by(model_name) %>%
+    summarise(mean = mean(mse_), sd = sd(mse_)) %>% 
+    mutate(group=group)
+
   
   return(results)
 }

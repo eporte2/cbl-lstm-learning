@@ -330,8 +330,8 @@ word_cat = uni_model_data %>% ungroup() %>%  select(uni_lemma, lexical_category)
 
 
 words_lexcat_mse <- errs_produces_byword %>% 
-  filter(model %in% c("freq_only", "freq_surp")) %>% 
-  spread(model, measure) %>% 
+  filter(model %in% c("freq_only", "freq_surp")) %>% ungroup() %>% 
+  spread(key=model, value=measure) %>% 
   mutate(diff = freq_only - freq_surp) %>% 
   arrange(desc(diff)) %>% 
   left_join(word_cat)
@@ -389,4 +389,114 @@ cor(cor_data, method = "pearson")
 
 cor_data <- uni_model_data %>% ungroup() %>% filter(measure=='produces' & lexical_category=="predicates") %>% select(!!predictors)
 cor(cor_data, method = "pearson")
+```
+
+
+### Results by word for new pipeline
+```{r results_byword_new}
+
+load("../../data/aoa_predictors/Average_child_produces_cv_models_data10_lms.RData")
+
+plot_predicts <- function(n){
+  print(sep_models_kfold$model_name[[n]])
+  test_data = split_data[sep_models_kfold$test[[n]],]
+  Y = test_data$prop
+  Y_pred = predict(sep_models_kfold$models[[n]],  test_data, type="response")
+  plot(Y_pred, Y)
+}
+
+
+error_analysis_byword <- function(model, data){
+  
+  get_mse <- function(data_word){
+    return(tibble(
+      item = unique(data_word$item), 
+      measure = mean((data_word$prop -  predict(model, data_word, type="response"))^2)
+                     )
+      )
+  }
+  
+  data = data %>% 
+    group_by(item)
+  results = data %>%
+    split( .$item) %>% 
+    map(get_mse) %>% 
+    reduce(rbind)
+    
+  return(results)
+}
+
+get_errs_byword <- function(n){
+  get_mean<-function(data){
+    return(tibble(
+      item = unique(data$item), 
+      measure = mean(data$measure)))
+  }
+  errs_ <- error_analysis_byword(model = sep_models_kfold$models[[n]], data = split_data[sep_models_kfold$test[[n]],]) %>% 
+    mutate(model_name = sep_models_kfold$model_name[[n]])
+    
+  return(errs_)
+}
+
+load("../../data/aoa_predictors/Average_child_produces_cv_models_data5_nofreq.RData")  
+errs_produces_byword<- map(c(1:60), get_errs_byword) %>% reduce(rbind) 
+
+results =  errs_produces_byword %>%
+  group_by(model_name, item) %>% 
+  summarise(mean= mean(measure))
+
+
+### plot differences
+
+
+load("../../data/aoa_predictors/uni_model_data.RData")
+word_cat = uni_model_data %>% ungroup() %>%  select(uni_lemma, lexical_category) %>% unique() %>% 
+  mutate(lexical_category = lexical_category %>% fct_relevel("other")) %>% 
+  mutate(item = uni_lemma) %>% 
+  select(item, lexical_category)
+
+
+
+words_lexcat_mse <- results %>% 
+  filter(model_name %in% c("full_set", "full_surp")) %>% ungroup() %>% 
+  spread(key=model_name, value=mean) %>% 
+  mutate(diff = full_set - full_surp) %>% 
+  arrange(desc(diff)) %>% 
+  left_join(word_cat)
+
+plot_data = words_lexcat_mse
+p = ggplot(data = plot_data %>% arrange(desc(diff)) %>% head(50), 
+            aes(x = reorder(item,diff), y = diff, fill=lexical_category)) +
+  geom_bar(stat='identity') +
+  coord_flip()+
+  scale_fill_discrete(name = "Lexical category", labels = c("unmarked", "nouns", "function words", "predicates"))+
+  theme(text = element_text(size=18))+
+  labs(x="word", y="difference in MSE")
+
+
+
+ words_lexcat_mse %>% group_by(lexical_category) %>% count()
+ words_lexcat_mse %>% arrange(desc(diff)) %>% head(50) %>% group_by(lexical_category) %>% count()
+
+ggsave("mse_diff_byword_top50.png",plot=p, width = 7, height = 8, units="in", limitsize = FALSE)
+
+p = ggplot(data = plot_data, 
+            aes(x = reorder(item,diff), y = diff, fill=lexical_category)) +
+  geom_bar(stat='identity') +
+  theme(legend.text = element_text(size=18))
+
+#ggsave("mse_diff_byword_all.png",plot=p, width = 20, height = 7, units="in", limitsize = FALSE)
+
+
+surprisals_cat <- average_child_surprisals %>% 
+  mutate(item = uni_lemma) %>% select(-c(uni_lemma)) %>% 
+  left_join(word_cat)
+
+plot_data = surprisals_cat
+
+p = ggplot(data = plot_data, 
+            aes(x = reorder(item,avg_surprisal), y = avg_surprisal, fill=lexical_category)) +
+  geom_bar(stat='identity') +
+  theme(legend.text = element_text(size=18))
+
 ```
