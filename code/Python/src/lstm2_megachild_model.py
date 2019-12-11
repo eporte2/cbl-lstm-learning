@@ -163,7 +163,7 @@ model.add(Embedding(input_dim = vocab_size,  # vocabulary size
 #add LSTM layers (2 LAYERS)
 model.add(LSTM(hidden_size, return_sequences=True))
 #second layer with weight regularization
-model.add(LSTM(hidden_size bias_regularizer=reg))
+model.add(LSTM(hidden_size, bias_regularizer=reg))
 # add layer regular densely connected layer to reshape to output size and use softmax activation for output layer
 model.add(Dense(vocab_size, activation='softmax'))
 # use RMSprop for optimization (could also use Adam or Adagrad) and cross entropy for loss function
