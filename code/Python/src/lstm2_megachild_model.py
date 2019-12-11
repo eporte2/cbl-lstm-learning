@@ -241,10 +241,10 @@ with open(result_dir + '/Mega_child.aoa_surprisals.csv', 'w') as f:
     f.write("word, uni_lemma, avg_surprisal" + '\n')
     for w in aoa_words:
         w.get_contexts_surprisals(train, model)
-        for surp in w.surprisals
-        f.write(w.word + ',' +
-                w.uni_lemma + ',' +
-                str(surp*10000)+ '\n')
+        for surp in w.surprisals:
+            f.write(w.word + ',' +
+                    w.uni_lemma + ',' +
+                    str(surp*10000)+ '\n')
 
 
 del model
