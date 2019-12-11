@@ -39,6 +39,7 @@ from keras.preprocessing.text import Tokenizer
 from keras.layers import Embedding, LSTM, Dense
 from keras.models import Sequential
 from keras.regularizers import L1L2
+from keras.callbacks import ModelCheckpoint
 # My classes
 from my_data_generator import DataGenerator
 from my_decoder_generator import DecoderGenerator
@@ -53,6 +54,8 @@ epochs=50
 batch_size = 32
 # Size of word vectors
 output_size = 100
+#vocab_size
+vocab_size =10000
 # Nb of hidden neurons in 1 layer of LSTM
 hidden_size = 50
 #use regularizer
@@ -120,11 +123,10 @@ def get_data_from_files():
 
 train, test = get_data_from_files()
 
-tokenizer = Tokenizer(num_words=10000)
+tokenizer = Tokenizer(num_words=vocab_size)
 tokenizer.fit_on_texts(train + test)
 vocab = tokenizer.word_index
-# vocabulary size is equal to the vocab size + the <PAD> character used for padding sequences during training
-vocab_size = len(vocab) + 1
+
 # transform text strings into sequences of int (representing the word's
 # index in vocab)
 train_seqs = tokenizer.texts_to_sequences(train)
