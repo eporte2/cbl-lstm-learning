@@ -169,11 +169,16 @@ model.add(Dense(vocab_size, activation='softmax'))
 # use RMSprop for optimization (could also use Adam or Adagrad) and cross entropy for loss function
 model.compile('rmsprop', 'categorical_crossentropy')
 
+# checkpoint save best
+checkpoint = ModelCheckpoint(model_dir+"/checkpoints/", monitor='val_accuracy', verbose=1, save_best_only=True, mode='max')
+callbacks_list = [checkpoint]
+
 # Train LSTM
 model.fit_generator(train_generator,
                     steps_per_epoch = steps_per_epoch,
                     epochs = epochs,
                     verbose=2,
+                    callbacks=callbacks_list,
                     max_queue_size=10,
                     shuffle=False)
 
