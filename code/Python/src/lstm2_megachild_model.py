@@ -44,6 +44,7 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.regularizers import L1L2
 from tensorflow.keras.callbacks import ModelCheckpoint
 from tensorflow.keras.preprocessing.sequence import pad_sequences
+import numpy as np
 
 # My classes
 from my_data_generator import DataGenerator
