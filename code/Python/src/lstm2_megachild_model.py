@@ -35,11 +35,13 @@ import math
 #import multiprocessing
 import random
 # Keras model functions and classes
-from keras.preprocessing.text import Tokenizer
-from keras.layers import Embedding, LSTM, Dense
-from keras.models import Sequential
-from keras.regularizers import L1L2
-from keras.callbacks import ModelCheckpoint
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras.preprocessing.text import Tokenizer
+from tensorflow.keras.layers import Embedding, LSTM, Dense
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.regularizers import L1L2
+from tensorflow.keras.callbacks import ModelCheckpoint
 # My classes
 from my_data_generator import DataGenerator
 from my_decoder_generator import DecoderGenerator
@@ -156,7 +158,7 @@ test_generator = DataGenerator(seqs = test_seqs,
 
 print('TRAINING MODEL...\n')
 # initialize model
-model = Sequential()
+model = tf.keras.Sequential()
 # add initial embedding layer
 model.add(Embedding(input_dim = vocab_size,  # vocabulary size
                     output_dim = output_size,  # size of embeddings
