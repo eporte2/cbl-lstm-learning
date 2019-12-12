@@ -42,7 +42,8 @@ from tensorflow.keras.layers import Embedding, LSTM, Dense
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.regularizers import L1L2
 from tensorflow.keras.callbacks import ModelCheckpoint
-from tensorflow.python.keras.utils.data_utils import Sequence
+from tensorflow.keras.preprocessing.sequence import pad_sequences
+
 # My classes
 from my_data_generator import DataGenerator
 from my_decoder_generator import DecoderGenerator
@@ -150,14 +151,8 @@ train_generator = DataGenerator(seqs = train_seqs,
                                    maxlen = maxlen,
                                    batch_size = batch_size,
                                    shuffle = shuffle)
-test_generator = DataGenerator(seqs = test_seqs,
-                                   vocab = vocab,
-                                   vocab_size = vocab_size,
-                                   maxlen = maxlen,
-                                   batch_size = batch_size,
-                                   shuffle = shuffle)
 
-print('TRAINING MODEL...\n')
+print('BUILDING MODEL...\n')
 # initialize model
 model = tf.keras.Sequential()
 # add initial embedding layer
@@ -178,6 +173,7 @@ model.compile('rmsprop', 'categorical_crossentropy')
 checkpoint = ModelCheckpoint(model_dir+"/checkpoints/", monitor='val_accuracy', verbose=1, save_best_only=True, mode='max')
 callbacks_list = [checkpoint]
 
+print('TRAINING MODEL...\n')
 # Train LSTM
 model.fit_generator(train_generator,
                     steps_per_epoch = steps_per_epoch,

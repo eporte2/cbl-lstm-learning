@@ -1,10 +1,12 @@
-import keras
-from keras.preprocessing.sequence import pad_sequences
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras.utils.data_utils import Sequence
+from tensorflow.keras.preprocessing.sequence import pad_sequences
 import random
 import numpy as np
 
 # Data generator class for keras Sequential model
-class DataGenerator(keras.utils.Sequence):
+class DataGenerator(Sequence):
     def __init__(self, seqs, vocab, vocab_size, maxlen=60, batch_size=32, shuffle=False):
         self.seqs = seqs
         self.vocab = vocab
@@ -53,6 +55,6 @@ class DataGenerator(keras.utils.Sequence):
         # create context and output split, e.g. [[0,0,0],[0,0,1],[0,1,2]], [[1],[2],[3]]
         X, y = sequences[:,:-1],sequences[:,-1]
         # create one hot vector for output category layer
-        y = keras.utils.to_categorical(y, num_classes=self.vocab_size)
+        y = tf.keras.utils.to_categorical(y, num_classes=self.vocab_size)
 
         return X,y
