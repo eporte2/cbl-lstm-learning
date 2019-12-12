@@ -42,6 +42,7 @@ from tensorflow.keras.layers import Embedding, LSTM, Dense
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.regularizers import L1L2
 from tensorflow.keras.callbacks import ModelCheckpoint
+from tensorflow.python.keras.utils.data_utils import Sequence
 # My classes
 from my_data_generator import DataGenerator
 from my_decoder_generator import DecoderGenerator
