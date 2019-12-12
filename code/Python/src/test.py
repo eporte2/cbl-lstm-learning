@@ -50,4 +50,9 @@ from my_decoder_generator import DecoderGenerator
 
 print('TESTED ALL DEPENDENCIES')
 
-print(str(tf.__version__))
+tf.test.is_gpu_available
+
+tf.test.gpu_device_name
+
+from tensorflow.keras import backend
+backend.tensorflow_backend._get_available_gpus()
