@@ -53,6 +53,3 @@ print('TESTED ALL DEPENDENCIES')
 tf.test.is_gpu_available
 
 tf.test.gpu_device_name
-
-from tensorflow.keras import backend
-backend.tensorflow_backend._get_available_gpus()
