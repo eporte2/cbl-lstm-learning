@@ -1,6 +1,6 @@
 import tensorflow as tf
 from tensorflow import keras
-from tensorflow.keras.python.utils.data_utils import Sequence
+from tensorflow.python.keras.utils.data_utils import Sequence
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 import random
 import numpy as np
