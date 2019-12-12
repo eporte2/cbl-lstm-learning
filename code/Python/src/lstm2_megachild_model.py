@@ -32,6 +32,7 @@ args = get_args()
 #libs for helper functions
 import re
 import math
+import csv
 #import multiprocessing
 import random
 # Keras model functions and classes
@@ -151,6 +152,12 @@ train_generator = DataGenerator(seqs = train_seqs,
                                    maxlen = maxlen,
                                    batch_size = batch_size,
                                    shuffle = shuffle)
+val_generator = DataGenerator(seqs = test_seqs,
+                                   vocab = vocab,
+                                   vocab_size = vocab_size,
+                                   maxlen = maxlen,
+                                   batch_size = batch_size,
+                                   shuffle = shuffle)
 
 print('BUILDING MODEL...\n')
 # initialize model
@@ -167,7 +174,7 @@ model.add(LSTM(hidden_size, bias_regularizer=reg))
 # add layer regular densely connected layer to reshape to output size and use softmax activation for output layer
 model.add(Dense(vocab_size, activation='softmax'))
 # use RMSprop for optimization (could also use Adam or Adagrad) and cross entropy for loss function
-model.compile('rmsprop', 'categorical_crossentropy')
+model.compile('rmsprop', 'categorical_crossentropy', metrics=['accuracy'])
 
 # checkpoint save best
 checkpoint = ModelCheckpoint(model_dir+"/checkpoints/", monitor='val_accuracy', verbose=1, save_best_only=True, mode='max')
@@ -179,6 +186,9 @@ model.fit_generator(train_generator,
                     steps_per_epoch = steps_per_epoch,
                     epochs = epochs,
                     verbose=2,
+                    validation_data=val_generator,
+                    validation_steps=(len(test_seqs)/batch_size),
+                    validation_freq = 2,
                     callbacks=callbacks_list,
                     max_queue_size=10,
                     shuffle=False)
