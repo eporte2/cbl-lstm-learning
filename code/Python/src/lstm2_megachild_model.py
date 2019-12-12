@@ -53,9 +53,9 @@ from my_decoder_generator import DecoderGenerator
 
 #### HYPERPARAMETERS ####
 
-#cpus = multiprocessing.cpu_count()
+
 # Nb of epochs (iterations through whole train set)
-epochs=50
+epochs=100
 # Mini-batch size necessary for initializing data generators
 batch_size = 32
 # Size of word vectors
@@ -66,10 +66,8 @@ vocab_size =10000
 hidden_size = 50
 #use regularizer
 reg = L1L2(l1=0.01, l2=0.01)
-# Generate sentences in order of transcript
-shuffle = False
-# Nb of beams for beam beam_search
-k = 5
+# Shuffle order in which sentences are seen
+shuffle = True
 
 
 #### GLOBAL VARIABLES ####
@@ -91,6 +89,7 @@ def is_test_sent(p):
 # Retrieve train and test sets for all child transcripts
 def get_data_from_files():
     train = []
+    val = []
     test = []
     for subdir, dirs, files in os.walk(transcript_dir):
         for file in files:
@@ -112,35 +111,39 @@ def get_data_from_files():
                             test.append(sent)
                     else :
                         sent = re.sub('\*[A-Z]+: ', '', sent)
-                        train.append(sent)
+                        if is_test_sent(0.2):
+                            val.append(sent)
+                        else:
+                            train.append(sent)
 
     # save test and train split in case we need to rerun model
     with open(model_dir+'/train/Mega_child.train.txt','w') as f :
         for line in train:
             f.write(line)
+    with open(model_dir+'/train/Mega_child.val.txt','w') as f :
+        for line in val:
+            f.write(line)
     with open(model_dir+'/test/Mega_child.test.txt','w') as f :
         for line in test:
             f.write(line)
 
-    return train, test
+    return train, val, test
 
 
 #### MAIN METHOD : MODEL TRAINING ####
 
-train, test = get_data_from_files()
+train, val, test = get_data_from_files()
 
 tokenizer = Tokenizer(num_words=vocab_size)
-tokenizer.fit_on_texts(train + test)
+tokenizer.fit_on_texts(train+val+test)
 vocab = tokenizer.word_index
 
 # transform text strings into sequences of int (representing the word's
 # index in vocab)
 train_seqs = tokenizer.texts_to_sequences(train)
-test_seqs = tokenizer.texts_to_sequences(test)
+val_seqs = tokenizer.texts_to_sequences(val)
 # get the maximum length of sequences - this is needed for data generator
-maxlen = max([len(seq) for seq in train_seqs])
-# number of optimization iterations to see whole corpus (epoch)
-steps_per_epoch = math.ceil(len(train_seqs)/ batch_size)
+maxlen = max([len(seq) for seq in (train_seqs+val_seqs)])
 
 print('vocab_size = '+str(vocab_size))
 print('train_maxlen = '+str(maxlen))
@@ -153,7 +156,7 @@ train_generator = DataGenerator(seqs = train_seqs,
                                    maxlen = maxlen,
                                    batch_size = batch_size,
                                    shuffle = shuffle)
-val_generator = DataGenerator(seqs = test_seqs,
+val_generator = DataGenerator(seqs = val_seqs,
                                    vocab = vocab,
                                    vocab_size = vocab_size,
                                    maxlen = maxlen,
@@ -178,21 +181,19 @@ model.add(Dense(vocab_size, activation='softmax'))
 model.compile('rmsprop', 'categorical_crossentropy', metrics=['accuracy'])
 
 # checkpoint save best
-checkpoint = ModelCheckpoint(model_dir+"/checkpoints/", monitor='val_accuracy', verbose=1, save_best_only=True, mode='max')
-callbacks_list = [checkpoint]
+checkpoint = ModelCheckpoint(model_dir+"/checkpoints/", monitor='val_loss', verbose=1, save_best_only=True, mode='min')
+earlystop = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
 
 print('TRAINING MODEL...\n')
 # Train LSTM
 model.fit_generator(train_generator,
-                    steps_per_epoch = steps_per_epoch,
+                    steps_per_epoch = len(train_generator),
                     epochs = epochs,
                     verbose=2,
                     validation_data=val_generator,
-                    validation_steps=(len(test_seqs)/batch_size),
+                    validation_steps= len(val_generator),
                     validation_freq = 2,
-                    callbacks=callbacks_list,
-                    max_queue_size=10,
-                    shuffle=False)
+                    callbacks=[checkpoint, earlystop])
 
 # Save trained model for future use
 model.save(str(model_dir+'/Mega_child_model.h5'))
