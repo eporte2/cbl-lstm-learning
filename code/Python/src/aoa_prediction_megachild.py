@@ -81,6 +81,8 @@ class AoAWord:
             print(self.word + ' total: '+ str(score))
             score = score/len(self.surprisals)
             print(self.word + ' nb contexts: '+ str(len(self.surprisals)))
+            print('surprisals: ')
+            print(*self.surprisals, sep = ", ")
             return score
 
 def get_model_train_test():
@@ -130,12 +132,14 @@ for childname, model, train, val, test in data:
 
         # write all results to the result_dir
     with open(result_dir + '/' + childname + '.aoa_result.csv', 'w') as f:
-        f.write("word, uni_lemma, avg_surprisal" + '\n')
+        csvwriter = csv.writer(f, delimiter=',')
+        csvwriter.writerow(["word", "uni_lemma", "avg_surprisal"])
         for w in aoa_words:
             row= [w.word,w.uni_lemma,w.get_avg_surprisal(seqs, model)]
-            f.writerow(row)
+            csvwriter.writerow(row)
 
     with open(result_dir + '/' + childname + '.aoa_all_surprisals.csv', 'w') as f:
+        csvwriter = csv.writer(f, delimiter=',')
         for w in aoa_words:
             row= [w.word]+[w.surprisals]
-            f.writerow(row)
+            csvwriter.writerow(row)
