@@ -306,14 +306,22 @@ test <- sep_models_loo %>% filter(name %in% c("full_set", "full_surp_only")) %>%
   arrange(desc(diff))
 
 
+test <- sep_models_loo %>% filter(name %in% c("freq_only", "surp_only")) %>% 
+  group_by(name, test_word, lexical_category) %>% summarise(mean(abs_dev)) %>% 
+  spread(key=name, value="mean(abs_dev)" ) %>% 
+  mutate(diff = freq_only-surp_only) %>% 
+  arrange(desc(diff))
+
 plot_data = test
-p = ggplot(data = plot_data %>% arrange(desc(diff)) %>% head(100), 
+p = ggplot(data = plot_data %>% arrange(desc(diff)) %>% head(50), 
             aes(x = reorder(test_word,diff), y = diff, fill=lexical_category)) +
   geom_bar(stat='identity') +
   coord_flip()+
   scale_fill_discrete(name = "Lexical category", labels = c("nouns", "function words", "predicates"))+
   theme(text = element_text(size=18))+
   labs(x="word", y="difference in absolute deviation")
+
+ggsave("absolutedeviation_diff_byword_top50.png",plot=p, width = 7, height = 8, units="in", limitsize = FALSE)
 
 plot_data %>% group_by(lexical_category) %>% count()
 plot_data %>% arrange(desc(diff)) %>% head(100) %>% group_by(lexical_category) %>% count()

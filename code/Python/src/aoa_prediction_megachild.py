@@ -1,4 +1,5 @@
 import os
+import sys
 import argparse
 
 #### GET ARGUMENTS FROM PYTHON SCRIPT CALL
@@ -37,6 +38,7 @@ word_list = args.word_list
 model_dir = args.model_dir
 result_dir = args.result_dir
 vocab_size =10000
+epsilon = sys.float_info.epsilon
 
 class AoAWord:
     def __init__(self, word, uni_lemma, maxlen, vocab):
@@ -66,7 +68,8 @@ class AoAWord:
             X, y = self.contexts[:,:-1],self.contexts[:,-1]
             p_pred = model.predict(X)
             for i, prob in enumerate(p_pred):
-                self.surprisals.append(-np.log(prob[y[i]]))
+                print(prob[y[i]])
+                self.surprisals.append(-np.log(prob[y[i]]+epsilon))
 
 
     def get_avg_surprisal(self, sequences, model):
@@ -81,8 +84,8 @@ class AoAWord:
             print(self.word + ' total: '+ str(score))
             score = score/len(self.surprisals)
             print(self.word + ' nb contexts: '+ str(len(self.surprisals)))
-            print('surprisals: ')
-            print(*self.surprisals, sep = ", ")
+            #print('surprisals: ')
+            #print(*self.surprisals, sep = ", ")
             return score
 
 def get_model_train_test():
