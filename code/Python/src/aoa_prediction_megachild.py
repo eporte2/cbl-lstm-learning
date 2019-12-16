@@ -77,9 +77,9 @@ class AoAWord:
             return "NA"
         else:
             for surprisal in self.surprisals:
-                total += surprisal
-            score = total/len(self.surprisals)
-            print(self.word + ' total: '+ str(total))
+                score += surprisal
+            print(self.word + ' total: '+ str(score))
+            score = score/len(self.surprisals)
             print(self.word + ' nb contexts: '+ str(len(self.surprisals)))
             return score
 
