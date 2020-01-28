@@ -321,7 +321,7 @@ p = ggplot(data = plot_data %>% arrange(desc(diff)) %>% head(50),
   theme(text = element_text(size=18))+
   labs(x="word", y="difference in absolute deviation")
 
-ggsave("absolutedeviation_diff_byword_top50.png",plot=p, width = 7, height = 8, units="in", limitsize = FALSE)
+ggsave("_diff_byword_top50.png",plot=p, width = 7, height = 8, units="in", limitsize = FALSE)
 
 plot_data %>% group_by(lexical_category) %>% count()
 plot_data %>% arrange(desc(diff)) %>% head(100) %>% group_by(lexical_category) %>% count()
