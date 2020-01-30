@@ -11,8 +11,8 @@ library(modelr)
 library(purrr)
 
 
-load("../../data/aoa_predictors/model_data_imputed_avg_child.RData")
-load("../../data/aoa_predictors/uni_model_data_avg_child.RData")
+load("../../../data/aoa_predictors/model_data_imputed_avg_child.RData")
+load("../../../data/aoa_predictors/uni_model_data_avg_child.RData")
 
 predictors <- c("avg_surprisal","frequency", "MLU", "final_frequency", "solo_frequency", "num_phons", "concreteness", "valence", "arousal", "babiness")
 
@@ -48,7 +48,7 @@ formulae <- formulas(~prop, full_set, freq_only, full_surp, freq_surp, surp_only
 run_crossv <- function(split_data){
   group = unique(split_data$group)
   print(paste("running models for", group))
-  name = paste("../../data/aoa_predictors/",
+  name = paste("../../../data/aoa_predictors/",
                gsub(" ", "_", group, fixed = TRUE),
                "_cv_models_data10_newpipe.RData", sep="")
   
@@ -125,7 +125,7 @@ run_cv_by_childname <- function(child){
     map(~ run_crossv(split_data = .)) %>% 
     reduce(rbind)
   
-  name = paste("../../data/aoa_predictors/",
+  name = paste("../../../data/aoa_predictors/",
                gsub(" ", "_", child, fixed = TRUE),
                "_cv_errs_data4_nofreq.RData", sep="")
   

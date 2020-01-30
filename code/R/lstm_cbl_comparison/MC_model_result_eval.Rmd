@@ -39,22 +39,22 @@ my_get_prod_results <- function(result_dir){
 ```
 
 ```{r cbl_files}
-result_dir = "../../data/results/cbl-baseline/prod_results/run1_incremental"
+result_dir = "../../../data/results/cbl-baseline/prod_results/run1_incremental"
 df.cbl_incr = my_get_prod_results(result_dir)
 ```
 
 ```{r cbl_files2}
-result_dir = "../../data/results/cbl-baseline/prod_results/run2_nonincremental"
+result_dir = "../../../data/results/cbl-baseline/prod_results/run2_nonincremental"
 df.cbl_nonincr = my_get_prod_results(result_dir)
 ```
 
 ```{r cbl_files3}
-result_dir = "../../data/results/cbl-baseline/prod_results/run3_0.4test"
+result_dir = "../../../data/results/cbl-baseline/prod_results/run3_0.4test"
 df.cbl_0.4test = my_get_prod_results(result_dir)
 ```
 
 ```{r lstm_files}
-result_dir = "../../data/results/lstm-baseline/prod_results/third_run_0.4test"
+result_dir = "../../../data/results/lstm-baseline/prod_results/third_run_0.4test"
 df.lstm_prod_results = my_get_prod_results(result_dir)
 
 ```
@@ -313,7 +313,7 @@ ggplot(NULL,aes(x=utterance_length)) +
 ```
 
 ```{r token_counts}
-token_count_file = '../../data/results/token_counts_eng.csv'
+token_count_file = '../../../data/results/token_counts_eng.csv'
 df.token_counts = read.csv(token_count_file) 
 df.token_counts = df.token_counts %>%  mutate(child_name = file) %>% 
   select(child_name, train_tokens, test_tokens)
@@ -370,7 +370,7 @@ ggplot(df.lstm_bysize, aes(x=train_tokens, y=production_score)) +
 
 
 ```{r beam}
-result_dir = "../../data/results/cbl-baseline/prod_results/run4_0.4test_beam5"
+result_dir = "../../../data/results/cbl-baseline/prod_results/run4_0.4test_beam5"
 df.cbl_beam5 = my_get_prod_results(result_dir)
 df.cbl_beam5_bychild = my_get_prod_results_bychild(df.cbl_beam5)
 df.cbl_beam5_bylang = my_get_avg_prod_results_bylang(df.cbl_beam5_bychild)
@@ -414,8 +414,8 @@ ggplot(NULL,aes(x=utterance_length)) +
 ```
 
 ```{r beam1}
-result_dir = "../../data/results/lstm-baseline/prod_results/fourth_run_0.4test/beam2"
-result_dir = "../../data/results/lstm2-baseline/beam"
+result_dir = "../../../data/results/lstm-baseline/prod_results/fourth_run_0.4test/beam2"
+result_dir = "../../../data/results/lstm2-baseline/beam"
 df.lstm_beam5 = my_get_prod_results(result_dir)
 df.lstm_beam5_bychild = my_get_prod_results_bychild(df.lstm_beam5)
 df.lstm_beam5_bylang = my_get_avg_prod_results_bylang(df.lstm_beam5_bychild)
@@ -423,8 +423,8 @@ lstm_beam5_overall_eng = my_get_overall_score_bylang(df.lstm_beam5_bylang)
 ```
 
 ```{r beam2}
-result_dir = "../../data/results/lstm-baseline/prod_results/fourth_run_0.4test/greedy"
-result_dir = "../../data/results/lstm2-baseline/greedy"
+result_dir = "../../../data/results/lstm-baseline/prod_results/fourth_run_0.4test/greedy"
+result_dir = "../../../data/results/lstm2-baseline/greedy"
 df.lstm_greedy = my_get_prod_results(result_dir)
 df.lstm_greedy_bychild = my_get_prod_results_bychild(df.lstm_greedy)
 df.lstm_greedy_bylang = my_get_avg_prod_results_bylang(df.lstm_greedy_bychild)
@@ -641,7 +641,7 @@ print(overall_bychild)
 (Original CBL model code) The following takes the result from
 ```{r eval=FALSE}
 
-original_bychild_results = read.csv("../../data/results/cbl-baseline/original_eng_results.csv", header = FALSE)
+original_bychild_results = read.csv("../../../data/results/cbl-baseline/original_eng_results.csv", header = FALSE)
 
 original_overall_bychild = sum(original_bychild_results$V1)/nrow(original_bychild_results)
 

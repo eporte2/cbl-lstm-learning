@@ -48,7 +48,7 @@ my_get_prod_results <- function(result_dir){
   return(df.prod_results)
 }
 
-result_dir = "../../data/results/aoa_frequencies/"
+result_dir = "../../../../data/results/aoa_frequencies/"
 frequencies = my_get_prod_results(result_dir)
 frequencies = frequencies %>% filter(child_name!="Thomas")
 
@@ -67,7 +67,7 @@ frequencies <- frequencies %>%
 
 ## 3/4. Load in total train token counts and merge with frequencies df
 ```{r total_counts}
-total_counts = read.csv("../../data/results/token_counts_eng.csv") %>% 
+total_counts = read.csv("../../../data/results/token_counts_eng.csv") %>% 
   mutate(child_name = file) %>% 
   select(child_name, train_tokens)
 
@@ -93,5 +93,5 @@ avg_freq <- weighted_freq %>%
 
 ## 7. Combine results with other predictors. To do so, I will save results and load again in predict_AoA.Rmd
 ```{r save_freq}
-save(avg_freq, file = "../../data/aoa_predictors/avg_freq.RData")
+save(avg_freq, file = "../../../data/aoa_predictors/avg_freq.RData")
 ```

@@ -17,7 +17,7 @@ library(tidyverse)
 
 ## Average Child Results where frequency is replaced by avg_surprisal
 ```{r avg_load}
-load("../../data/aoa_predictors/Average_child_cv_errs_data5_nofreq.RData")
+load("../../../data/aoa_predictors/Average_child_cv_errs_data5_nofreq.RData")
 
 
 avg_errs_no_surp = cv_errs_data %>% 
@@ -177,11 +177,11 @@ get_errs_byword <- function(name){
 
 model_names = c("full_set", "freq_only", "freq_MLU", "full_surp", "freq_surp", "freq_MLU_surp")
 
-load("../../data/aoa_predictors/Average_child_produces_cv_models_data5_nofreq.RData")  
+load("../../../data/aoa_predictors/Average_child_produces_cv_models_data5_nofreq.RData")  
 errs_produces_byword<- map(model_names, get_errs_byword) %>% reduce(rbind) 
 
 
-#load("../../data/aoa_predictors/Average_child_understands_cv_models_data.RData")  
+#load("../../../data/aoa_predictors/Average_child_understands_cv_models_data.RData")  
 #errs_understands_byword<- map(model_names, get_errs_byword) %>% reduce(rbind)
 ```
 
@@ -321,7 +321,7 @@ p = ggplot(data = (plot_data_avg %>% filter(err_=="mse_" & measure=="produces" &
 
 
 
-load("../../data/aoa_predictors/uni_model_data.RData")
+load("../../../data/aoa_predictors/uni_model_data.RData")
 word_cat = uni_model_data %>% ungroup() %>%  select(uni_lemma, lexical_category) %>% unique() %>% 
   mutate(lexical_category = lexical_category %>% fct_relevel("other")) %>% 
   mutate(item = uni_lemma) %>% 
@@ -375,7 +375,7 @@ p = ggplot(data = plot_data,
 ```{r cor}
 predictors <- c("avg_surprisal","frequency", "MLU", "final_frequency", "solo_frequency", "num_phons", "concreteness", "valence", "arousal", "babiness")
 
-load("../../data/aoa_predictors/uni_model_data_avg_child.RData")
+load("../../../data/aoa_predictors/uni_model_data_avg_child.RData")
 
 uni_model_data <- uni_model_data %>%
     mutate(lexical_category = lexical_category %>% fct_relevel("other")) %>%
@@ -395,7 +395,7 @@ cor(cor_data, method = "pearson")
 ### Results by word for new pipeline
 ```{r results_byword_new}
 
-load("../../data/aoa_predictors/Average_child_produces_cv_models_data10_lms.RData")
+load("../../../data/aoa_predictors/Average_child_produces_cv_models_data10_lms.RData")
 
 plot_predicts <- function(n){
   print(sep_models_kfold$model_name[[n]])
@@ -438,7 +438,7 @@ get_errs_byword <- function(n){
   return(errs_)
 }
 
-load("../../data/aoa_predictors/Average_child_produces_cv_models_data5_nofreq.RData")  
+load("../../../data/aoa_predictors/Average_child_produces_cv_models_data5_nofreq.RData")  
 errs_produces_byword<- map(c(1:60), get_errs_byword) %>% reduce(rbind) 
 
 results =  errs_produces_byword %>%
@@ -449,7 +449,7 @@ results =  errs_produces_byword %>%
 ### plot differences
 
 
-load("../../data/aoa_predictors/uni_model_data.RData")
+load("../../../data/aoa_predictors/uni_model_data.RData")
 word_cat = uni_model_data %>% ungroup() %>%  select(uni_lemma, lexical_category) %>% unique() %>% 
   mutate(lexical_category = lexical_category %>% fct_relevel("other")) %>% 
   mutate(item = uni_lemma) %>% 

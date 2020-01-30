@@ -35,7 +35,7 @@ df.items_nospace <- df.items %>%
 ```
 
 ```{r save}
-write.table((df.items_nospace %>% select(words, num_item_id)), file=paste("../../data/transcripts/eng/aoa_words.csv"), sep = "\t", quote = FALSE, col.names = TRUE, row.names = FALSE)
+write.table((df.items_nospace %>% select(words, num_item_id)), file=paste("../../../data/transcripts/eng/aoa_words.csv"), sep = "\t", quote = FALSE, col.names = TRUE, row.names = FALSE)
 
 ```
 

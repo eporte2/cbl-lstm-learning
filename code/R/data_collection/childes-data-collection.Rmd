@@ -73,7 +73,7 @@ my_write_CBL_transcripts <- function(df){
    df %>%
      filter(!is.na(CBL_string)) %>%
      select(CBL_string) %>%
-   write.table(., file=paste("../../data/transcripts/" lang, "/", child_name, ".capp", sep =""), quote = FALSE, col.names = FALSE, row.names = FALSE)
+   write.table(., file=paste("../../../data/transcripts/" lang, "/", child_name, ".capp", sep =""), quote = FALSE, col.names = FALSE, row.names = FALSE)
    return(df)
 }
 
@@ -207,7 +207,7 @@ p=ggplot(filter(df.length_counts, target_child_name=="Thomas" & num_tokens<=16 &
 Get vocabulary size (maybe do this as part of python code.)
 
 ```{r vocab_size}
-df.vocab_size= read.csv("../../data/results/token_counts_eng.csv")
+df.vocab_size= read.csv("../../../data/results/token_counts_eng.csv")
 df.vocab_size = df.vocab_size %>%  filter(file!="Will") %>% mutate(total_tokens= train_tokens+test_tokens)
 
 p=ggplot(df.vocab_size, aes(x=log(total_tokens), y = log(vocab_size))) +

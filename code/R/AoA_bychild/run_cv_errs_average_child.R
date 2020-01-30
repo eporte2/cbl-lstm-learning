@@ -11,8 +11,8 @@ library(modelr)
 library(purrr)
 
 
-load("../../data/aoa_predictors/model_data.RData")
-load("../../data/aoa_predictors/uni_joined.RData")
+load("../../../../data/aoa_predictors/model_data.RData")
+load("../../../data/aoa_predictors/uni_joined.RData")
 uni_joined_eng <- uni_joined %>% filter(language == "English (American)")
 
 my_get_transcript_results <- function(file){
@@ -32,7 +32,7 @@ my_get_prod_results <- function(result_dir){
   return(df.prod_results)
 }
 
-result_dir = "../../data/results/aoa_surprisals/"
+result_dir = "../../../data/results/aoa_surprisals/"
 model_surprisals = my_get_prod_results(result_dir)
 model_surprisals = model_surprisals %>% filter(child_name!="Thomas")
 
@@ -115,8 +115,8 @@ uni_model_data <- model_data_imputed %>%
   mutate(unscaled_age = age, age = scale(age),
          total = as.double(num_true + num_false), prop = num_true / total)
 
-save(model_data_imputed, file = "../../data/aoa_predictors/model_data_imputed_avg_child.RData")
-save(uni_model_data, file = "../../data/aoa_predictors/uni_model_data_avg_child.RData")
+save(model_data_imputed, file = "../../../data/aoa_predictors/model_data_imputed_avg_child.RData")
+save(uni_model_data, file = "../../../data/aoa_predictors/uni_model_data_avg_child.RData")
 
 #full_set = ~ (age | item) + age * frequency + age * MLU + age * final_frequency + age * solo_frequency + age * num_phons + age * concreteness + age * valence + age * arousal + age * babiness + lexical_category * frequency + lexical_category * MLU + lexical_category * final_frequency + lexical_category * solo_frequency + lexical_category *  num_phons + lexical_category * concreteness + lexical_category * valence + lexical_category * arousal + lexical_category * babiness
 
@@ -171,7 +171,7 @@ error_analysis <- function(model, data){
 run_crossv <- function(split_data){
   group = unique(split_data$group)
   print(paste("running models for", group))
-  name = paste("../../data/aoa_predictors/",
+  name = paste("../../../data/aoa_predictors/",
                gsub(" ", "_", group, fixed = TRUE),
                "_cv_models_data5_nofreq.RData", sep="")
   
@@ -250,7 +250,7 @@ run_cv_by_childname <- function(child){
     map(~ run_crossv(split_data = .)) %>% 
     reduce(rbind)
   
-  name = paste("../../data/aoa_predictors/",
+  name = paste("../../../data/aoa_predictors/",
                gsub(" ", "_", child, fixed = TRUE),
                "_cv_errs_data5_nofreq.RData", sep="")
   
