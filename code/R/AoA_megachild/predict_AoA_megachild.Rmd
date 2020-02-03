@@ -19,8 +19,6 @@ library(purrr)
 
 theme_set(theme_classic())
 
-# color blind friendly palette
-cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 
 
 ```
@@ -103,8 +101,10 @@ sep_models_loo <- map(c(1:nrow(models_loo)), get_aoa_pred) %>% bind_rows() %>%
  results <- sep_models_loo %>% 
   transform(abs_dev = as.numeric(abs_dev)) %>% 
   group_by(name) %>%
-  summarise(mean_abs_dev = mean(abs_dev), rmse = sqrt(mean(se)), mse = mean(se))
-
+  summarise(mean_abs_dev = mean(abs_dev), sd_abs_dev = sd(abs_dev), rmse = sqrt(mean(se)), mse = mean(se)) %>% 
+  mutate(ci_mad = 1.96*(sd_abs_dev/sqrt(314))) %>% 
+  mutate(ci_mad_min = mean_abs_dev - ci_mad) %>% 
+  mutate(ci_mad_max = mean_abs_dev + ci_mad)
   
 ```
 
@@ -127,7 +127,7 @@ p = ggplot(data = plot_data %>% arrange(desc(diff)) %>% head(50) ,
   labs(x="", y="difference in absolute deviation") +
   theme(text=element_text(size=18,  family="Times New Roman"), legend.title = element_text( size = 16), legend.text = element_text( size = 16), legend.position = c(0.7, 0.6), axis.text.x = element_text(size = 16), axis.text.y = element_text(size = 16))
 
-ggsave("megachild_absolutedeviation_diff_byword_top50.png",plot=p, width = 6, height = 10, units="in", limitsize = FALSE)
+#ggsave("megachild_absolutedeviation_diff_byword_top50.png",plot=p, width = 6, height = 10, units="in", limitsize = FALSE)
 
 p
 
@@ -233,3 +233,29 @@ surp_model_data %>% unnest() %>%
   summarise(mean_score=mean(concreteness))
 
 ```
+
+
+t-test on cross-validation outputs
+```{r ttest}
+
+test <- sep_models_loo %>% filter(name %in% c("full_set", "full_surp")) %>% 
+  group_by(name, test_word, lexical_category) %>% summarise(mean(abs_dev)) %>% 
+  spread(key=name, value="mean(abs_dev)" )
+
+t.test(test$full_set, test$full_surp)
+
+
+
+```
+
+Anova augmented model comparison
+```{r anova}
+model_base <- lm(formula= aoa ~ lexical_category * avg_freq + lexical_category *  num_phons + lexical_category * concreteness + lexical_category * valence + lexical_category * arousal + lexical_category * babiness, data = data)
+
+model_aug <- lm(formula = aoa ~ lexical_category * avg_surprisal + lexical_category * avg_freq + lexical_category * num_phons + lexical_category * concreteness + lexical_category * valence + lexical_category * arousal + lexical_category * babiness, data = data)
+
+anova(model_base, model_aug)
+
+
+```
+

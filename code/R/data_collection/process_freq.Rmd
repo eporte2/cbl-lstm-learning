@@ -48,7 +48,7 @@ my_get_prod_results <- function(result_dir){
   return(df.prod_results)
 }
 
-result_dir = "../../../../data/results/aoa_frequencies/"
+result_dir = "../../../data/results/aoa_frequencies/"
 frequencies = my_get_prod_results(result_dir)
 frequencies = frequencies %>% filter(child_name!="Thomas")
 
